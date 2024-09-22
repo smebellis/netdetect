@@ -56,4 +56,4 @@ def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', yl
     plt.show()
 
 # Plot a count of classes
-generate_plot(data=iris_df, plot_type='count', x='class', title='Count of Classes', xlabel='Class', ylabel='Count')
+generate_plot(data=combined_df, plot_type='count', x=' Label', title='Count of Classes', xlabel='Class', ylabel='Count')
