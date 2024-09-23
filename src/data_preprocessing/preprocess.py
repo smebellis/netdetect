@@ -8,6 +8,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from xgboost import XGBClassifier
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+
+
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import (
@@ -181,6 +186,54 @@ def remove_features(df, feature_importances, threshold=None):
     return df[importance_features]
     
 
+# Function to generate plots
+def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', ylabel='', hue=None):
+    """
+    Generate different types of plots using seaborn.
+    
+    Parameters:
+    - data: DataFrame or array-like, the dataset to plot.
+    - plot_type: str, the type of plot ('bar', 'hist', 'scatter', 'line', etc.).
+    - x: str, the column name for the x-axis (if applicable).
+    - y: str, the column name for the y-axis (if applicable).
+    - title: str, the title of the plot.
+    - xlabel: str, label for the x-axis.
+    - ylabel: str, label for the y-axis.
+    - hue: str, column to group data by color (used in scatter plots and barplots).
+    
+    Supported plot types: 'bar', 'hist', 'scatter', 'line', 'count'.
+    """
+    plt.figure(figsize=(8, 6))
+    
+    # Bar Plot
+    if plot_type == 'bar':
+        sns.barplot(x=x, y=y, hue=hue, data=data)
+        
+    # Histogram
+    elif plot_type == 'hist':
+        sns.histplot(data[x], kde=True)
+        
+    # Scatter Plot
+    elif plot_type == 'scatter':
+        sns.scatterplot(x=x, y=y, hue=hue, data=data)
+        
+    # Line Plot
+    elif plot_type == 'line':
+        sns.lineplot(x=x, y=y, hue=hue, data=data)
+        
+    # Count Plot (for categorical columns)
+    elif plot_type == 'count':
+        sns.countplot(x=x, data=data, hue=hue)
+    
+    # Set plot details
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    
+    # Show the plot
+    plt.show()
+
+
 # Load the data from file
 def main():
     combined_df = file_load(
@@ -188,7 +241,8 @@ def main():
     )
     # Encode the labels
     combined_df, le = encode_labels(combined_df, label_column=" Label")
-
+    # Plot a count of classes
+    generate_plot(data=combined_df, plot_type='count', x=' Label', title='Count of Classes', xlabel='Class', ylabel='Count')
     # Scale the numerical data
     numerical_columns = combined_df.select_dtypes(include=["number"]).columns.tolist()
 
@@ -257,3 +311,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
