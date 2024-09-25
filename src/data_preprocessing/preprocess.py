@@ -43,7 +43,6 @@ scoring = {
     "recall": make_scorer(recall_score, average="weighted"),
     "precision": make_scorer(precision_score, average="weighted"),
     "f1": make_scorer(f1_score, average="weighted"),
-    # "confusion": make_scorer(confusion_matrix),
 }
 
 models = {
@@ -116,45 +115,28 @@ def calculate_class_weights(y_train):
     return class_weights
 
 
-def evaluate_model(clf, X_train, y_train, X_test, y_test):
-    # Evaluate on training data
-    y_train_pred = clf.predict(X_train)
-    train_accuracy = accuracy_score(y_train, y_train_pred)
-    train_recall = recall_score(y_train, y_train_pred, average="weighted")
-    train_precision = precision_score(
-        y_train, y_train_pred, average="weighted", zero_division=1
-    )
-    train_f1 = f1_score(y_train, y_train_pred, average="weighted")
-    # confusion_train = confusion_matrix(y_train, y_train_pred)
+def evaluate_model(clf, X, y):
+    """
+    Evaluate the model on the given data and return the metrics.
 
-    # Evaluate on test data
-    y_test_pred = clf.predict(X_test)
-    test_accuracy = accuracy_score(y_test, y_test_pred)
-    test_recall = recall_score(y_test, y_test_pred, average="weighted")
-    test_precision = precision_score(
-        y_test, y_test_pred, average="weighted", zero_division=1
-    )
-    test_f1 = f1_score(y_test, y_test_pred, average="weighted")
-    # confusion_test = confusion_matrix(y_test, y_test_pred)
+    Args:
+        clf: The classifier to evaluate.
+        X: The feature data.
+        y: The true labels.
 
-    # Print the results
-    print("Training Data Metrics:")
-    print(f"Accuracy: {train_accuracy}")
-    print(f"Recall: {train_recall}")
-    print(f"Precision: {train_precision}")
-    print(f"F1 Score: {train_f1}")
+    Returns:
+        dict: A dictionary containing the evaluation metrics.
+    """
 
-    print("\nTest Data Metrics:")
-    print(f"Accuracy: {test_accuracy}")
-    print(f"Recall: {test_recall}")
-    print(f"Precision: {test_precision}")
-    print(f"F1 Score: {test_f1}")
+    y_pred = clf.predict(X)
 
-    # Check for overfitting
-    if train_accuracy > test_accuracy:
-        print("\nThe model is likely overfitting.")
-    else:
-        print("\nThe model is not overfitting.")
+    metrics = {
+        "accuracy": accuracy_score(y, y_pred),
+        "recall": recall_score(y, y_pred, average="weighted"),
+        "precision": precision_score(y, y_pred, average="weighted", zero_division=1),
+        "f1": f1_score(y, y_pred, average="weighted"),
+    }
+    return metrics
 
 
 def export_feature_importances(clf, feature_names, file_path="feature_importances.csv"):
@@ -299,9 +281,22 @@ def main():
     best_clf = grid_search.best_estimator_
     print(best_clf)
 
-    evaluate_model(best_clf, X_train, y_train, X_test, y_test)
-    best_params = grid_search.best_params_
+    # Evaluate Training data
+    train_metrics = evaluate_model(best_clf, X_train, y_train)
+    # Evalutate Test data
+    test_metrics = evaluate_model(best_clf, X_test, y_test)
+
+    # Print the results
+    print("Training Data Metrics")
+    for metric, value in train_metrics.items():
+        print(f"{metric.capitalize()}: {value}")
+
+    print("Test Data Metrics")
+    for metric, value in test_metrics.items():
+        print(f"{metric.capitalize()}: {value}")
+
     print_best_params(grid_search)
+    best_params = grid_search.best_params_
 
     joblib.dump(best_clf, "best_model.pkl")
     print("\nModel saved to best_model.pkl")

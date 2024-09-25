@@ -45,19 +45,17 @@ def main():
     )
     X_train, X_test, y_train, y_test = split_data(df, " Label")
 
-    X_res, y_res = balance_classes(X_train, y_train)
-    joblib.dump(X_res, "X_resampled.pkl")
-    joblib.dump(y_res, "y_resampled.pkl")
-    print("\nResampled data saved")
+    # X_res, y_res = balance_classes(X_train, y_train)
+    # joblib.dump(X_res, "X_resampled.pkl")
+    # joblib.dump(y_res, "y_resampled.pkl")
+    # print("\nResampled data saved")
 
-    breakpoint()
-
-    # X_res = load_resampled_data(
-    #     "/home/smebellis/ece579/final_project/network_anomaly_detection/src/data_preprocessing/X_resampled.pkl"
-    # )
-    # y_res = load_resampled_data(
-    #     "/home/smebellis/ece579/final_project/network_anomaly_detection/src/data_preprocessing/y_resampled.pkl"
-    # )
+    X_res = load_resampled_data(
+        "/home/smebellis/ece579/final_project/network_anomaly_detection/src/data_preprocessing/X_resampled.pkl"
+    )
+    y_res = load_resampled_data(
+        "/home/smebellis/ece579/final_project/network_anomaly_detection/src/data_preprocessing/y_resampled.pkl"
+    )
 
     # Check the new balanced classes
     class_distribution = Counter(y_res)
