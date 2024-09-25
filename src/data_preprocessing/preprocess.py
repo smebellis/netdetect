@@ -45,14 +45,14 @@ param_grid_rf = {
 }
 
 # Define the scoring metrics
-scoring = {
+SCORING_METRICS = {
     "accuracy": make_scorer(accuracy_score),
     "recall": make_scorer(recall_score, average="weighted"),
     "precision": make_scorer(precision_score, average="weighted"),
     "f1": make_scorer(f1_score, average="weighted"),
 }
 
-models = {
+MODELS = {
     "Random Forest": RandomForestClassifier(DEFAULT_RANDOM_STATE),
     "Random Tree": DecisionTreeClassifier(DEFAULT_RANDOM_STATE),
     "Naïve Bayes": GaussianNB(),
@@ -62,6 +62,19 @@ thresholds = [0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 
 
 def clean_data(df):
+    """
+    Cleans the given DataFrame by performing the following operations:
+
+    1. Replaces all infinite values (both positive and negative) with NaNs.
+    2. Drops all rows containing NaN values.
+    3. Removes duplicate rows from the DataFrame.
+
+    Parameters:
+    df (pandas.DataFrame): The DataFrame to be cleaned.
+
+    Returns:
+    pandas.DataFrame: The cleaned DataFrame.
+    """
     # Replace all the inf values with NaNs before replacing them
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
@@ -290,43 +303,31 @@ def parse_args():
 def main():
     args = parse_args()
 
-    combined_df = file_load(file_path=args.data_path)
-    # Encode the labels
-    combined_df, le = encode_labels(combined_df, label_column=" Label")
+    # Load and preprocess data
+    df = load_data(args.data_path)
 
-    # Scale the numerical data
-    numerical_columns = combined_df.select_dtypes(include=["number"]).columns.tolist()
-
-    # combined_df, scaler = scale_data(combined_df, numerical_columns=numerical_columns)
+    df, le, scaler = preprocess_data(df, label_column=" Label", scale=True)
 
     # Split the data
-    X_train, X_test, y_train, y_test = split_data(combined_df, label_column=" Label")
-
-    # Print shapes of the splits
-    print(f"X_train shape: {X_train.shape}")
-    print(f"X_test shape: {X_test.shape}")
-    print(f"y_train shape: {y_train.shape}")
-    print(f"y_test shape: {y_test.shape}")
-
-    # smote = SMOTE(random_state=42)
-    class_weights = calculate_class_weights(y_train)
+    X_train, X_test, y_train, y_test = split_data(df, label_column=" Label")
+    logging.info("Data split into training and testing sets")
 
     # Balance the classes
-    # print(f"Balancing the classes....\n{y_train.value_counts()}")
-    # X_res, y_res = balance_classes(X_train, y_train)
-    # print(f"Classes Balanced...\n{y_res.value_counts()}")
+    X_train, y_train = balance_classes(X_train, y_train)
+    logging.info("Classes balanced using SMOTE")
 
-    clf = RandomForestClassifier(random_state=42, verbose=2)
-    cv = StratifiedKFold(n_splits=5)
-    # Initialize GridSearchCV
-    grid_search = GridSearchCV(
-        estimator=clf,
-        param_grid=param_grid,
-        scoring=scoring,
-        refit="f1",
-        cv=cv,
-        n_jobs=10,
-    )
+    # Iterate over models
+    for model_name, model in MODELS.items():
+        logging.info(f"Training model: {model_name}")
+
+        grid_search = GridSearchCV(
+            estimator=model,
+            param_grid=param_grid_rf,
+            scoring=SCORING_METRICS,
+            refit="f1",
+            cv=StratifiedKFold(n_splits=5),
+            n_jobs=10,
+        )
 
     # Record the start time
     start_time = time.time()
@@ -338,34 +339,28 @@ def main():
     end_time = time.time()
 
     duration = end_time - start_time
-    print(f"Model training completed in {duration:.2f} seconds.")
+    logging.info(f"{model_name} training completed in {duration:.2f} seconds.")
 
     # Get the best estimator
     best_clf = grid_search.best_estimator_
-    print(best_clf)
+    logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
 
-    # Evaluate Training data
+    # Evaluate
     train_metrics = evaluate_model(best_clf, X_train, y_train)
-    # Evalutate Test data
     test_metrics = evaluate_model(best_clf, X_test, y_test)
+    logging.info(f"{model_name} Training Metrics: {train_metrics}")
+    logging.info(f"{model_name} Testing Metrics: {test_metrics}")
 
-    # Print the results
-    print("Training Data Metrics")
-    for metric, value in train_metrics.items():
-        print(f"{metric.capitalize()}: {value}")
+    # Save the model
+    model_filename = f"best_model_{model_name.replace(' ', '_')}.pkl"
+    joblib.dump(best_clf, model_filename)
+    logging.info(f"Model saved to {model_filename}")
 
-    print("Test Data Metrics")
-    for metric, value in test_metrics.items():
-        print(f"{metric.capitalize()}: {value}")
-
-    print_best_params(grid_search)
+    # Save the parameters
     best_params = grid_search.best_params_
-
-    joblib.dump(best_clf, "best_model.pkl")
-    print("\nModel saved to best_model.pkl")
-
     with open("best_params.json", "w") as f:
         json.dump(best_params, f, indent=4)
+    logging.info(f"Model parameters saved {f}")
 
     importance_df = export_feature_importances(best_clf, feature_names=X_train.columns)
 
