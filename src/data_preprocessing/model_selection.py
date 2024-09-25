@@ -1,35 +1,31 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+import json
+import sys
+import time
 from collections import Counter
+
+import joblib
+import pandas as pd
 from imblearn.ensemble import BalancedRandomForestClassifier
 from imblearn.over_sampling import SMOTE
+from preprocess import (
+    balance_classes,
+    load_data,
+    load_resampled_data,
+    remove_features,
+    split_data,
+)
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
-import time
-import joblib
-
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import (
     accuracy_score,
-    recall_score,
-    precision_score,
     f1_score,
     make_scorer,
+    precision_score,
+    recall_score,
 )
-import time
-import joblib
-import sys
-import json
-from preprocess import (
-    split_data,
-    remove_features,
-    balance_classes,
-    load_resampled_data,
-    load_data,
-)
-
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 models = {
     "Random Forest": RandomForestClassifier(verbose=2, n_jobs=8),
@@ -62,6 +58,7 @@ def main():
     print("\nNew class distribution after SMOTE:")
     for label, count in class_distribution.items():
         print(f"Class {label}: {count} samples")
+
     for model_name, model in models.items():
         start_time = time.time()
         print(f"Training {model_name}")

@@ -1,36 +1,43 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+import argparse
+import json
+import sys
+import time
+import logging
+import os
+from glob import glob
+import numpy as np
 from collections import Counter
+
+import joblib
+import pandas as pd
 from imblearn.ensemble import BalancedRandomForestClassifier
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.model_selection import StratifiedKFold
-import argparse
-
-
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import (
     accuracy_score,
-    recall_score,
-    precision_score,
+    confusion_matrix,
     f1_score,
     make_scorer,
-    confusion_matrix,
+    precision_score,
+    recall_score,
 )
-import time
-import joblib
-import sys
-import json
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
-sys.path.append("/home/smebellis/ece579/final_project/network_anomaly_detection/")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-from notebooks.exploratory import file_load
+# Constants
+DEFAULT_TEST_SIZE = 0.3
+DEFAULT_RANDOM_STATE = 42
+FEATURE_IMPORTANCE_THRESHOLD = 0.01
 
-# Define the parameter grid
-param_grid = {
+# Parameter grid specific to RandomForestClassifier
+param_grid_rf = {
     "n_estimators": [50, 75, 100],
     "max_samples": [0.25, 0.5, 0.75],
     "max_depth": [2],
@@ -46,16 +53,53 @@ scoring = {
 }
 
 models = {
-    "Random Forest": RandomForestClassifier(),
-    "Random Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier(DEFAULT_RANDOM_STATE),
+    "Random Tree": DecisionTreeClassifier(DEFAULT_RANDOM_STATE),
     "Naïve Bayes": GaussianNB(),
 }
 
 thresholds = [0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
 
 
+def clean_data(df):
+    # Replace all the inf values with NaNs before replacing them
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+    # Drop NaN values
+    df.dropna(inplace=True)
+
+    # Check if there are duplicates in the dataframe.
+    df.duplicated().sum()
+    df.drop_duplicates(inplace=True)
+
+    return df
+
+
+def file_load(file_path):
+
+    if not os.path.exists(file_path):
+        print(f"File does not exist: {file_path}")
+
+        csv_files = glob("../data/raw/MachineLearningCSV/MachineLearningCVE/*.csv")
+        dataframes = [pd.read_csv(file) for file in csv_files]
+        cleaned_df = clean_data(pd.concat(dataframes, ignore_index=True))
+        cleaned_df.to_pickle(file_path)
+
+        return cleaned_df
+    else:
+        print("Loading File....")
+
+        return pd.read_pickle(file_path)
+
+
 def load_data(file_path):
-    return file_load(file_path)
+    try:
+        df = file_load(file_path)
+        logging.info(f"Data loaded successfully from {file_path}")
+        return df
+    except Exception as e:
+        logging.error(f"Failed to load data from {file_path}: {e}")
+        sys.exit(1)
 
 
 # Encode the labels
@@ -64,6 +108,37 @@ def encode_labels(df, label_column):
     df[label_column] = le.fit_transform(df[label_column])
 
     return df, le
+
+
+def decode_labels(df, label_column, le):
+    return le.inverse_transform(df[label_column])
+
+
+# Scale the numerical data
+def scale_data(df, numerical_columns):
+    scaler = StandardScaler()
+    df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
+
+    return df, scaler
+
+
+def preprocess_data(df, label_column, scale=False, feature_selection=False):
+    # Encode labels
+    df, le = encode_labels(df, label_column)
+
+    # Scale data if required
+    if scale:
+        numerical_columns = df.select_dtypes(include=["number"]).columns.tolist()
+        df, scaler = scale_data(df, numerical_columns)
+    else:
+        scaler = None
+
+    # Feature selection if required
+    if feature_selection:
+        # Placeholder for feature selection logic
+        pass
+
+    return df, le, scaler
 
 
 def balance_classes(X_train, y_train):
@@ -81,24 +156,12 @@ def load_balanced_classes(X_res_file_path, y_res_file_path):
     return X_res, y_res
 
 
-# Scale the numerical data
-def scale_data(df, numerical_columns):
-    scaler = StandardScaler()
-    df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
-
-    return df, scaler
-
-
 # Split the data
 def split_data(df, label_column, test_size=0.3, random_state=42):
     X = df.drop(label_column, axis=1)
     y = df[label_column]
 
     return train_test_split(X, y, test_size=test_size, random_state=random_state)
-
-
-def decode_labels(df, label_column, le):
-    return le.inverse_transform(df[label_column])
 
 
 def calculate_class_weights(y_train):
