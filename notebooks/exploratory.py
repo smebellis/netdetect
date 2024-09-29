@@ -24,32 +24,9 @@ from imblearn.ensemble import BalancedRandomForestClassifier
 import seaborn as sns
 import warnings
 
+from src.data_preprocessing import file_load
+
 # Check if the file exists, if it does exist then load it from the folder, if not then return an error
-
-
-def file_load(file_path):
-    # TODO: Add this statement back in once you check the correct syntax assert os.path.exists("../data/processed/combined_df.pkl")
-    if not os.path.exists(file_path):
-        print(f"File does not exist: {file_path}")
-
-        csv_files = glob("../data/raw/MachineLearningCSV/MachineLearningCVE/*.csv")
-        dataframes = [pd.read_csv(file) for file in csv_files]
-        cleaned_df = clean_data(pd.concat(dataframes, ignore_index=True))
-        cleaned_df.to_pickle(file_path)
-
-        return cleaned_df
-    else:
-        print("Loading File....")
-
-        return pd.read_pickle(file_path)
-
-
-def balance_classes(X_train, y_train):
-    smote = SMOTE(random_state=42)
-
-    X_res, y_res = smote.fit_resample(X_train, y_train)
-
-    return X_res, y_res
 
 
 def clean_data(df):
@@ -68,5 +45,3 @@ def clean_data(df):
 
 if __name__ == "__main__":
     combined_df = file_load(file_path="../data/processed/combined_df.pkl")
-
-    breakpoint()
