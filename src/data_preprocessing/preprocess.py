@@ -18,10 +18,11 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.feature_selection import SelectKBest, f_classif
 
 # Configure logging
 logging.basicConfig(
@@ -309,7 +310,22 @@ def calculate_class_weights(y_train):
 
     return class_weights
 
-def evaluate_model(clf, X_train, y_train, X_test, y_test):
+def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_name=None):
+    """
+    Evaluates the classifier on training and test data, logs metrics, and plots the confusion matrix.
+
+    Args:
+        clf: Trained classifier.
+        X_train: Training features.
+        y_train: Training labels.
+        X_test: Test features.
+        y_test: Test labels.
+        label_encoder: LabelEncoder fitted on the labels.
+        model_name (str, optional): Name of the model for identification. Defaults to None.
+
+    Returns:
+        dict: Dictionary containing evaluation metrics.
+    """
     # Evaluate on training data
     y_train_pred = clf.predict(X_train)
     train_accuracy = accuracy_score(y_train, y_train_pred)
@@ -324,14 +340,25 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test):
     test_precision = precision_score(y_test, y_test_pred, average="weighted", zero_division=1)
     test_f1 = f1_score(y_test, y_test_pred, average="weighted")
 
+    # Plot and save the confusion matrix
+    plot_filename = f"confusion_matrix_{model_name.replace(' ', '_')}.png" if model_name else "confusion_matrix.png"
+    plot_confusion_matrix(
+        y_test, 
+        y_test_pred, 
+        classes=label_encoder.classes_, 
+        title=f'Confusion Matrix - {model_name}' if model_name else 'Confusion Matrix',
+        save_path=plot_filename
+    )
+    logging.info(f"Confusion matrix saved to {plot_filename}")
+
     # Log the results
-    logging.info("Training Data Metrics:")
+    logging.info(f"Training Data Metrics for {model_name}:")
     logging.info(f"Accuracy: {train_accuracy}")
     logging.info(f"Recall: {train_recall}")
     logging.info(f"Precision: {train_precision}")
     logging.info(f"F1 Score: {train_f1}")
 
-    logging.info("Test Data Metrics:")
+    logging.info(f"Test Data Metrics for {model_name}:")
     logging.info(f"Accuracy: {test_accuracy}")
     logging.info(f"Recall: {test_recall}")
     logging.info(f"Precision: {test_precision}")
@@ -339,12 +366,13 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test):
     
     # Check for overfitting
     if train_accuracy > test_accuracy:
-        print("\nThe model is likely overfitting.")
+        logging.warning(f"The model {model_name} is likely overfitting.")
     else:
-        print("\nThe model is not overfitting.")
+        logging.info(f"The model {model_name} is not overfitting.")
 
-    # Return metrics
-    return {
+    # Prepare metrics dictionary
+    metrics = {
+        "model": model_name,
         "train_accuracy": train_accuracy,
         "train_recall": train_recall,
         "train_precision": train_precision,
@@ -354,6 +382,9 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test):
         "test_precision": test_precision,
         "test_f1": test_f1,
     }
+
+    return metrics
+
 
 def export_feature_importances(clf, feature_names, file_path="feature_importances.csv")-> pd.Series:
     """
@@ -458,6 +489,26 @@ def remove_features(df, feature_importances, threshold=None):
     
     return df[importance_features]
 
+def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion Matrix', save_path=None):
+    """
+    Plots and optionally saves the confusion matrix.
+
+    Args:
+        y_true: True labels.
+        y_pred: Predicted labels.
+        classes: List of class names.
+        title (str, optional): Title of the plot. Defaults to 'Confusion Matrix'.
+        save_path (str, optional): Path to save the plot image. If None, the plot is not saved.
+    """
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title(title)
+    
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    plt.show()
 # Function to generate plots
 def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', ylabel='', hue=None):
     """
@@ -513,6 +564,15 @@ def parse_args():
     parser.add_argument(
         "--label_column", type=str, required=True, help="Name of the label column"
     )
+    parser.add_argument(
+        "--scale", action='store_true', help="Whether to scale numerical features"
+    )
+    parser.add_argument(
+        "--feature_selection", action='store_true', help="Whether to perform feature selection"
+    )
+    parser.add_argument(
+        "--k_features", type=int, default=10, help="Number of top features to select"
+    )
     # Add more arguments as needed
     return parser.parse_args()
 
@@ -520,21 +580,49 @@ def parse_args():
 def main():
     
     args = parse_args()
-     # Load and preprocess data
-    df = load_data(args.data_path)
     
-    df, le, scaler = preprocess_data(df, label_column=args.label_column, scale=False, feature_selection=False)
+    # Load and preprocess data
+    logging.info("Loading data...")
+    df = load_data(args.data_path)
+    logging.info("Data loaded successfully.")
+    
+    logging.info("Preprocessing data...")
+    df, le, scaler = preprocess_data(
+        df, 
+        label_column=args.label_column, 
+        scale=args.scale, 
+        feature_selection=args.feature_selection,
+        k_features=args.k_features
+    )
+    logging.info("Data preprocessing completed.")
     
     # Split the data
+    logging.info("Splitting data into training and testing sets...")
     X_train, X_test, y_train, y_test = split_data(df, label_column=args.label_column)
+    logging.info(f"Data split completed. Training samples: {X_train.shape[0]}, Testing samples: {X_test.shape[0]}")
     
     # Plot a count of classes
-    generate_plot(data=df, plot_type='count', x=args.label_column, title='Count of Classes', xlabel='Class', ylabel='Count')
+    logging.info("Generating class distribution plot...")
+    generate_plot(
+        data=df, 
+        plot_type='count', 
+        x=args.label_column, 
+        title='Count of Classes', 
+        xlabel='Class', 
+        ylabel='Count'
+    )
+    logging.info("Class distribution plot generated.")
        
-    # Balance classes
-    # X_train, y_train = balance_classes(X_train, y_train)
-    # logging.info("Classes balanced using SMOTE.")
+    # Balance classes if specified
+    if args.balance:
+        logging.info("Balancing classes using SMOTE...")
+        X_train, y_train = balance_classes(X_train, y_train)
+        logging.info(f"Classes balanced. New training samples: {X_train.shape[0]}")
+    else:
+        logging.info("Class balancing not performed.")
     
+    # Initialize a list to collect metrics
+    all_metrics = []
     
     # Iterate over models
     for model_name, model in MODELS.items():
@@ -557,8 +645,19 @@ def main():
         logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
 
         # Evaluate
-        metrics = evaluate_model(best_clf, X_train, y_train, X_test, y_test)
+        metrics = evaluate_model(
+            best_clf, 
+            X_train, 
+            y_train, 
+            X_test, 
+            y_test, 
+            label_encoder=le, 
+            model_name=model_name
+        )
         logging.info(f"{model_name} Metrics: {metrics}")
+        
+        # Append metrics to the list
+        all_metrics.append(metrics)
         
         # Save the model
         model_filename = f"best_model_{model_name.replace(' ', '_')}.pkl"
@@ -569,6 +668,15 @@ def main():
             export_feature_importances(best_clf, feature_names=X_train.columns, file_path=f"feature_importances_{model_name.replace(' ', '_')}.csv")
         else:
             logging.info(f"{model_name} does not support feature importances.")
+    
+    # After all models have been evaluated, save the metrics to a CSV file
+    if all_metrics:
+        metrics_df = pd.DataFrame(all_metrics)
+        metrics_filename = "model_evaluation_metrics.csv"
+        metrics_df.to_csv(metrics_filename, index=False)
+        logging.info(f"All model metrics saved to {metrics_filename}")
+    else:
+        logging.warning("No metrics to save.")
 
 if __name__ == "__main__":
     main()
