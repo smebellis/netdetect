@@ -87,6 +87,12 @@ MODELS = {
     "Naïve Bayes": GaussianNB(),
 }
 
+# Directory Paths
+MODELS_DIR = "models"
+PARAMS_DIR = "model_parameters"
+FEATURE_IMPORTANCES_DIR = "feature_importances"
+METRICS_DIR = "metrics"
+
 
 def clean_data(
     df: pd.DataFrame,
@@ -671,7 +677,7 @@ def plot_confusion_matrix(
     plt.show()
 
 
-def save_best_params(model_name, best_params):
+def save_best_params(model_name, best_params, parameter_filename):
     """
     Saves the best hyperparameters of a model to a JSON file.
 
@@ -679,9 +685,7 @@ def save_best_params(model_name, best_params):
         model_name (str): The name of the model.
         best_params (dict): The best hyperparameters obtained from GridSearchCV.
     """
-    params_dir = "model_parameters"
-    os.makedirs(params_dir, exist_ok=True)
-    parameter_filename = f"{params_dir}/best_params_{model_name.replace(' ', '_')}.json"
+
     try:
         with open(parameter_filename, "w") as f:
             json.dump(best_params, f, indent=4)
@@ -749,6 +753,9 @@ def parse_args():
         "--label_column", type=str, required=True, help="Name of the label column"
     )
     parser.add_argument(
+        "--balance", action="store_true", help="Whether to balance classes using SMOTE"
+    )
+    parser.add_argument(
         "--scale", action="store_true", help="Whether to scale numerical features"
     )
     parser.add_argument(
@@ -760,9 +767,32 @@ def parse_args():
         "--k_features", type=int, default=10, help="Number of top features to select"
     )
     parser.add_argument(
-        "--balance", action="store_true", help="Balance the classes in the dataset"
+        "--metrics_path",
+        type=str,
+        default="metrics/model_evaluation_metrics.csv",
+        help="Path to save evaluation metrics",
     )
-    # Add more arguments as needed
+    parser.add_argument(
+        "--params_dir",
+        type=str,
+        default="model_parameters",
+        help="Directory to save model parameters",
+    )
+    parser.add_argument(
+        "--models_dir",
+        type=str,
+        default="models",
+        help="Directory to save trained models",
+    )
+    parser.add_argument(
+        "--feature_importances_dir",
+        type=str,
+        default="feature_importances",
+        help="Directory to save feature importances",
+    )
+    parser.add_argument(
+        "--plots_dir", type=str, default="plots", help="Directory to save plots"
+    )
     return parser.parse_args()
 
 
@@ -770,6 +800,11 @@ def parse_args():
 def main():
 
     args = parse_args()
+
+    # Ensure the directories exist for saving
+    logging.info("Creating directories for saving...")
+    for directory in [MODELS_DIR, PARAMS_DIR, FEATURE_IMPORTANCES_DIR, METRICS_DIR]:
+        os.makedirs(directory, exist_ok=True)
 
     # Load and preprocess data
     logging.info("Loading data...")
@@ -837,9 +872,12 @@ def main():
         best_clf = grid_search.best_estimator_
         logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
 
-        # Save the best parameters
+        # Saving best parameters
+        parameter_filename = os.path.join(
+            args.params_dir, f"best_params_{model_name.replace(' ', '_')}.json"
+        )
         best_params = grid_search.best_params_
-        save_best_params(model_name, best_params)
+        save_best_params(model_name, best_params, parameter_filename)
 
         # Evaluate
         metrics = evaluate_model(
@@ -866,7 +904,10 @@ def main():
             export_feature_importances(
                 best_clf,
                 feature_names=X_train.columns,
-                file_path=f"feature_importances_{model_name.replace(' ', '_')}.csv",
+                file_path=os.path.join(
+                    args.feature_importances_dir,
+                    f"feature_importances_{model_name.replace(' ', '_')}.csv",
+                ),
             )
         else:
             logging.info(f"{model_name} does not support feature importances.")
@@ -874,7 +915,7 @@ def main():
     # After all models have been evaluated, save the metrics to a CSV file
     if all_metrics:
         metrics_df = pd.DataFrame(all_metrics)
-        metrics_filename = "model_evaluation_metrics.csv"
+        metrics_filename = args.metrics_path
         # Ensure the directory exists
         (
             os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
