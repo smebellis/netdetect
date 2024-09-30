@@ -260,7 +260,16 @@ def balance_classes(X_train, y_train):
 
     return X_res, y_res
 
-def preprocess_data(df, label_column, scale=False, feature_selection=False):
+def feature_selection(df, label_column, k=10):
+    X = df.drop(label_column, axis=1)
+    y = df[label_column]
+    selector = SelectKBest(score_func=f_classif, k=k)
+    X_new = selector.fit_transform(X, y)
+    selected_features = X.columns[selector.get_support()]
+    logging.info(f"Selected top {k} features: {list(selected_features)}")
+    return pd.DataFrame(X_new, columns=selected_features)
+
+def preprocess_data(df, label_column, scale=False, feature_selection=False, k_features=10):
     # Encode labels
     df, le = encode_labels(df, label_column)
     
@@ -273,8 +282,7 @@ def preprocess_data(df, label_column, scale=False, feature_selection=False):
     
     # Feature selection if required
     if feature_selection:
-        # Placeholder for feature selection logic
-        pass
+        df = feature_selection(df, label_column, k=k_features)
     
     return df, le, scaler
 
