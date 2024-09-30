@@ -26,6 +26,7 @@ from sklearn.metrics import (
     confusion_matrix,
     ConfusionMatrixDisplay,
     precision_recall_curve,
+    auc,
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.naive_bayes import GaussianNB
