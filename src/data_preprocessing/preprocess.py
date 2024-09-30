@@ -18,7 +18,15 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    precision_recall_curve,
+)
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -27,11 +35,8 @@ from sklearn.feature_selection import SelectKBest, f_classif
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("file_load.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("file_load.log"), logging.StreamHandler(sys.stdout)],
 )
 
 # Constants
@@ -68,17 +73,20 @@ MODEL_PARAM_GRIDS = {
 }
 
 SCORING_METRICS = {
-    "accuracy": 'accuracy',
-    "recall": 'recall_weighted',
-    "precision": 'precision_weighted',
-    "f1": 'f1_weighted',
+    "accuracy": "accuracy",
+    "recall": "recall_weighted",
+    "precision": "precision_weighted",
+    "f1": "f1_weighted",
 }
 
 MODELS = {
-    "Random Forest": RandomForestClassifier(random_state=DEFAULT_RANDOM_STATE, verbose=2),
+    "Random Forest": RandomForestClassifier(
+        random_state=DEFAULT_RANDOM_STATE, verbose=2
+    ),
     "Decision Tree": DecisionTreeClassifier(random_state=DEFAULT_RANDOM_STATE),
     "Naïve Bayes": GaussianNB(),
 }
+
 
 def clean_data(
     df: pd.DataFrame,
@@ -86,7 +94,7 @@ def clean_data(
     drop_na: bool = True,
     drop_duplicates: bool = True,
     subset_duplicates: Optional[list] = None,
-    inplace: bool = False
+    inplace: bool = False,
 ) -> pd.DataFrame:
     """
     Cleans the input DataFrame by handling infinite values, missing data, and duplicates.
@@ -130,13 +138,16 @@ def clean_data(
         if subset_duplicates:
             duplicated = df_cleaned.duplicated(subset=subset_duplicates).sum()
             df_cleaned.drop_duplicates(subset=subset_duplicates, inplace=True)
-            logging.info(f"Dropped {duplicated} duplicate rows based on subset {subset_duplicates}.")
+            logging.info(
+                f"Dropped {duplicated} duplicate rows based on subset {subset_duplicates}."
+            )
         else:
             duplicated = df_cleaned.duplicated().sum()
             df_cleaned.drop_duplicates(inplace=True)
             logging.info(f"Dropped {duplicated} duplicate rows.")
 
     return df_cleaned
+
 
 def file_load(file_path: Union[str, Path]) -> pd.DataFrame:
     """
@@ -200,12 +211,13 @@ def file_load(file_path: Union[str, Path]) -> pd.DataFrame:
         except Exception as e:
             logging.error(f"Error loading pickle file: {e}")
             raise
-    
+
+
 def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
     """
     Loads a DataFrame from a pickle file if it exists. If not, it reads CSV files from a specified directory,
     cleans and concatenates them into a single DataFrame, saves it as a pickle file, and returns the DataFrame.
-    
+
     This function wraps around `file_load` to provide additional logging and error handling.
 
     Args:
@@ -230,15 +242,21 @@ def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
         logging.error(f"No data: {ede_error}")
         raise
     except Exception as e:
-        logging.error(f"An unexpected error occurred while loading data from {file_path}: {e}")
+        logging.error(
+            f"An unexpected error occurred while loading data from {file_path}: {e}"
+        )
         raise
 
-def file_load_large_csv(file_path: Union[str, Path], chunksize: int = 100000) -> pd.DataFrame:
+
+def file_load_large_csv(
+    file_path: Union[str, Path], chunksize: int = 100000
+) -> pd.DataFrame:
     chunks = []
     for chunk in pd.read_csv(file_path, chunksize=chunksize):
         cleaned_chunk = clean_data(chunk)
         chunks.append(cleaned_chunk)
     return pd.concat(chunks, ignore_index=True)
+
 
 # Encode the labels
 def encode_labels(df, label_column):
@@ -247,6 +265,7 @@ def encode_labels(df, label_column):
 
     return df, le
 
+
 # Scale the numerical data
 def scale_data(df, numerical_columns):
     scaler = StandardScaler()
@@ -254,12 +273,14 @@ def scale_data(df, numerical_columns):
 
     return df, scaler
 
+
 def balance_classes(X_train, y_train):
     smote = SMOTE(random_state=42)
 
     X_res, y_res = smote.fit_resample(X_train, y_train)
 
     return X_res, y_res
+
 
 def feature_selection(df, label_column, k=10):
     X = df.drop(label_column, axis=1)
@@ -270,22 +291,26 @@ def feature_selection(df, label_column, k=10):
     logging.info(f"Selected top {k} features: {list(selected_features)}")
     return pd.DataFrame(X_new, columns=selected_features)
 
-def preprocess_data(df, label_column, scale=False, feature_selection=False, k_features=10):
+
+def preprocess_data(
+    df, label_column, scale=False, feature_selection=False, k_features=10
+):
     # Encode labels
     df, le = encode_labels(df, label_column)
-    
+
     # Scale data if required
     if scale:
         numerical_columns = df.select_dtypes(include=["number"]).columns.tolist()
         df, scaler = scale_data(df, numerical_columns)
     else:
         scaler = None
-    
+
     # Feature selection if required
     if feature_selection:
         df = feature_selection(df, label_column, k=k_features)
-    
+
     return df, le, scaler
+
 
 # Split the data
 def split_data(df, label_column, test_size=0.3, random_state=DEFAULT_RANDOM_STATE):
@@ -294,8 +319,10 @@ def split_data(df, label_column, test_size=0.3, random_state=DEFAULT_RANDOM_STAT
 
     return train_test_split(X, y, test_size=test_size, random_state=random_state)
 
+
 def decode_labels(df, label_column, le):
     return le.inverse_transform(df[label_column])
+
 
 def calculate_class_weights(y_train):
     class_counts = Counter(y_train)
@@ -310,9 +337,20 @@ def calculate_class_weights(y_train):
 
     return class_weights
 
-def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_name=None):
+
+def evaluate_model(
+    clf,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    label_encoder,
+    model_name=None,
+    plot_pr_curve=False,
+):
     """
-    Evaluates the classifier on training and test data, logs metrics, and plots the confusion matrix.
+    Evaluates the classifier on training and test data, logs metrics, plots confusion matrix
+    and Precision-Recall curve, and returns evaluation metrics.
 
     Args:
         clf: Trained classifier.
@@ -322,6 +360,7 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_n
         y_test: Test labels.
         label_encoder: LabelEncoder fitted on the labels.
         model_name (str, optional): Name of the model for identification. Defaults to None.
+        plot_pr_curve (bool, optional): Whether to plot the Precision-Recall curve. Defaults to False.
 
     Returns:
         dict: Dictionary containing evaluation metrics.
@@ -330,24 +369,112 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_n
     y_train_pred = clf.predict(X_train)
     train_accuracy = accuracy_score(y_train, y_train_pred)
     train_recall = recall_score(y_train, y_train_pred, average="weighted")
-    train_precision = precision_score(y_train, y_train_pred, average="weighted", zero_division=1)
+    train_precision = precision_score(
+        y_train, y_train_pred, average="weighted", zero_division=1
+    )
     train_f1 = f1_score(y_train, y_train_pred, average="weighted")
 
     # Evaluate on test data
     y_test_pred = clf.predict(X_test)
     test_accuracy = accuracy_score(y_test, y_test_pred)
     test_recall = recall_score(y_test, y_test_pred, average="weighted")
-    test_precision = precision_score(y_test, y_test_pred, average="weighted", zero_division=1)
+    test_precision = precision_score(
+        y_test, y_test_pred, average="weighted", zero_division=1
+    )
     test_f1 = f1_score(y_test, y_test_pred, average="weighted")
 
+    # Initialize PR AUC
+    pr_auc = None
+
+    # Check if classifier has predict_proba or decision_function
+    if hasattr(clf, "predict_proba"):
+        y_scores = clf.predict_proba(X_test)
+    elif hasattr(clf, "decision_function"):
+        y_scores = clf.decision_function(X_test)
+    else:
+        logging.warning(
+            f"{model_name} does not have predict_proba or decision_function method. PR AUC cannot be computed."
+        )
+        y_scores = None
+
+    # Compute PR AUC for each class and average
+    if y_scores is not None:
+        if len(label_encoder.classes_) == 2:
+            # Binary classification
+            precision, recall, _ = precision_recall_curve(y_test, y_scores[:, 1])
+            pr_auc = auc(recall, precision)
+            if plot_pr_curve:
+                plt.figure()
+                plt.plot(recall, precision, label=f"PR AUC = {pr_auc:.2f}")
+                plt.xlabel("Recall")
+                plt.ylabel("Precision")
+                plt.title(f"Precision-Recall Curve - {model_name}")
+                plt.legend()
+                plt.tight_layout()
+                pr_curve_filename = (
+                    f"pr_curve_{model_name.replace(' ', '_')}.png"
+                    if model_name
+                    else "pr_curve.png"
+                )
+                # Ensure the directory exists
+                (
+                    os.makedirs(os.path.dirname(pr_curve_filename), exist_ok=True)
+                    if os.path.dirname(pr_curve_filename)
+                    else None
+                )
+                plt.savefig(pr_curve_filename)
+                plt.show()
+                logging.info(f"Precision-Recall curve saved to {pr_curve_filename}")
+        else:
+            # Multi-class classification: One-vs-Rest approach
+            precision = dict()
+            recall = dict()
+            pr_auc = dict()
+            for i, class_label in enumerate(label_encoder.classes_):
+                precision[i], recall[i], _ = precision_recall_curve(
+                    (y_test == i).astype(int), y_scores[:, i]
+                )
+                pr_auc[i] = auc(recall[i], precision[i])
+                if plot_pr_curve:
+                    plt.plot(
+                        recall[i],
+                        precision[i],
+                        label=f"Class {class_label} PR AUC = {pr_auc[i]:.2f}",
+                    )
+
+            if plot_pr_curve:
+                plt.xlabel("Recall")
+                plt.ylabel("Precision")
+                plt.title(f"Precision-Recall Curve - {model_name}")
+                plt.legend()
+                plt.tight_layout()
+                pr_curve_filename = (
+                    f"pr_curve_{model_name.replace(' ', '_')}.png"
+                    if model_name
+                    else "pr_curve.png"
+                )
+                # Ensure the directory exists
+                (
+                    os.makedirs(os.path.dirname(pr_curve_filename), exist_ok=True)
+                    if os.path.dirname(pr_curve_filename)
+                    else None
+                )
+                plt.savefig(pr_curve_filename)
+                plt.show()
+                logging.info(f"Precision-Recall curves saved to {pr_curve_filename}")
+
     # Plot and save the confusion matrix
-    plot_filename = f"confusion_matrix_{model_name.replace(' ', '_')}.png" if model_name else "confusion_matrix.png"
+    plot_filename = (
+        f"confusion_matrix_{model_name.replace(' ', '_')}.png"
+        if model_name
+        else "confusion_matrix.png"
+    )
     plot_confusion_matrix(
-        y_test, 
-        y_test_pred, 
-        classes=label_encoder.classes_, 
-        title=f'Confusion Matrix - {model_name}' if model_name else 'Confusion Matrix',
-        save_path=plot_filename
+        y_test,
+        y_test_pred,
+        classes=label_encoder.classes_,
+        title=f"Confusion Matrix - {model_name}" if model_name else "Confusion Matrix",
+        save_path=plot_filename,
     )
     logging.info(f"Confusion matrix saved to {plot_filename}")
 
@@ -363,7 +490,15 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_n
     logging.info(f"Recall: {test_recall}")
     logging.info(f"Precision: {test_precision}")
     logging.info(f"F1 Score: {test_f1}")
-    
+    if pr_auc is not None:
+        if isinstance(pr_auc, dict):
+            for class_idx, auc_score in pr_auc.items():
+                logging.info(
+                    f"PR AUC for class {label_encoder.classes_[class_idx]}: {auc_score}"
+                )
+        else:
+            logging.info(f"PR AUC: {pr_auc}")
+
     # Check for overfitting
     if train_accuracy > test_accuracy:
         logging.warning(f"The model {model_name} is likely overfitting.")
@@ -383,10 +518,20 @@ def evaluate_model(clf, X_train, y_train, X_test, y_test, label_encoder, model_n
         "test_f1": test_f1,
     }
 
+    # Add PR AUC to metrics
+    if pr_auc is not None:
+        if isinstance(pr_auc, dict):
+            for class_idx, auc_score in pr_auc.items():
+                metrics[f"pr_auc_class_{label_encoder.classes_[class_idx]}"] = auc_score
+        else:
+            metrics["pr_auc"] = pr_auc
+
     return metrics
 
 
-def export_feature_importances(clf, feature_names, file_path="feature_importances.csv")-> pd.Series:
+def export_feature_importances(
+    clf, feature_names, file_path="feature_importances.csv"
+) -> pd.Series:
     """
     Extracts feature importances from a classifier, sorts them, and exports to a CSV file.
 
@@ -402,18 +547,21 @@ def export_feature_importances(clf, feature_names, file_path="feature_importance
 
     # Check if classifier has feature_importances_
     if not hasattr(clf, "feature_importances_"):
-        raise AttributeError("The classifier does not have feature_importances_ attribute.")
+        raise AttributeError(
+            "The classifier does not have feature_importances_ attribute."
+        )
 
     # Validate feature_names length
     if len(feature_names) != len(clf.feature_importances_):
-        raise ValueError("Length of feature_names does not match number of features in the classifier.")
+        raise ValueError(
+            "Length of feature_names does not match number of features in the classifier."
+        )
 
     # Extract and sort feature importances
     feature_importances = clf.feature_importances_
-    importance_df = pd.DataFrame({
-        "Feature": feature_names,
-        "Importance": feature_importances
-    })
+    importance_df = pd.DataFrame(
+        {"Feature": feature_names, "Importance": feature_importances}
+    )
     importance_df.sort_values(by="Importance", ascending=False, inplace=True)
 
     # Export to CSV with exception handling
@@ -427,47 +575,50 @@ def export_feature_importances(clf, feature_names, file_path="feature_importance
     # Return sorted series
     return importance_df.set_index("Feature")["Importance"]
 
+
 def plot_feature_importances(
-    sorted_importances, 
-    title='Feature Importances', 
-    figsize=(10, 6), 
-    color='skyblue', 
+    sorted_importances,
+    title="Feature Importances",
+    figsize=(10, 6),
+    color="skyblue",
     top_n=None,
     horizontal=False,
-    save_path=None
+    save_path=None,
 ):
     logger = logging.getLogger(__name__)
-    
+
     plt.figure(figsize=figsize)
     if horizontal:
-        sorted_importances.plot(kind='barh', color=color)
-        plt.xlabel('Importance')
-        plt.ylabel('Features')
+        sorted_importances.plot(kind="barh", color=color)
+        plt.xlabel("Importance")
+        plt.ylabel("Features")
     else:
-        sorted_importances.plot(kind='bar', color=color)
-        plt.ylabel('Importance')
-        plt.xlabel('Features')
-    
+        sorted_importances.plot(kind="bar", color=color)
+        plt.ylabel("Importance")
+        plt.xlabel("Features")
+
     plt.title(title)
-    
+
     # Add value labels
     for index, value in enumerate(sorted_importances):
         if horizontal:
-            plt.text(value, index, f'{value:.4f}', va='center')
+            plt.text(value, index, f"{value:.4f}", va="center")
         else:
-            plt.text(index, value, f'{value:.4f}', ha='center')
-    
+            plt.text(index, value, f"{value:.4f}", ha="center")
+
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
         logger.info(f"Feature importances plot saved to {save_path}.")
     plt.show()
-    
+
     logger.info(f"Plotted feature importances with title '{title}'.")
+
 
 def print_best_params(grid_search):
     print("\nBest Parameters found by GridSearchCV:")
     print(grid_search.best_params_)
+
 
 def remove_features(df, feature_importances, threshold=None):
     """
@@ -481,15 +632,18 @@ def remove_features(df, feature_importances, threshold=None):
     Returns:
     pd.DataFrame: The DataFrame with unimportant features removed.
     """
-    
+
     if threshold is None:
         threshold = feature_importances.mean()
 
     importance_features = df.columns[feature_importances >= threshold]
-    
+
     return df[importance_features]
 
-def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion Matrix', save_path=None):
+
+def plot_confusion_matrix(
+    y_true, y_pred, classes, title="Confusion Matrix", save_path=None
+):
     """
     Plots and optionally saves the confusion matrix.
 
@@ -504,16 +658,45 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion Matrix', sav
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
     disp.plot(cmap=plt.cm.Blues)
     plt.title(title)
-    
+
     plt.tight_layout()
     if save_path:
+        # Ensure the directory exists
+        (
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            if os.path.dirname(save_path)
+            else None
+        )
         plt.savefig(save_path)
     plt.show()
+
+
+def save_best_params(model_name, best_params):
+    """
+    Saves the best hyperparameters of a model to a JSON file.
+
+    Args:
+        model_name (str): The name of the model.
+        best_params (dict): The best hyperparameters obtained from GridSearchCV.
+    """
+    params_dir = "model_parameters"
+    os.makedirs(params_dir, exist_ok=True)
+    parameter_filename = f"{params_dir}/best_params_{model_name.replace(' ', '_')}.json"
+    try:
+        with open(parameter_filename, "w") as f:
+            json.dump(best_params, f, indent=4)
+        logging.info(f"Best parameters for {model_name} saved at {parameter_filename}")
+    except Exception as e:
+        logging.error(f"Failed to save best parameters for {model_name}: {e}")
+
+
 # Function to generate plots
-def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', ylabel='', hue=None):
+def generate_plot(
+    data, plot_type="bar", x=None, y=None, title="", xlabel="", ylabel="", hue=None
+):
     """
     Generate different types of plots using seaborn.
-    
+
     Parameters:
     - data: DataFrame or array-like, the dataset to plot.
     - plot_type: str, the type of plot ('bar', 'hist', 'scatter', 'line', etc.).
@@ -523,38 +706,39 @@ def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', yl
     - xlabel: str, label for the x-axis.
     - ylabel: str, label for the y-axis.
     - hue: str, column to group data by color (used in scatter plots and barplots).
-    
+
     Supported plot types: 'bar', 'hist', 'scatter', 'line', 'count'.
     """
     plt.figure(figsize=(8, 6))
-    
+
     # Bar Plot
-    if plot_type == 'bar':
+    if plot_type == "bar":
         sns.barplot(x=x, y=y, hue=hue, data=data)
-        
+
     # Histogram
-    elif plot_type == 'hist':
+    elif plot_type == "hist":
         sns.histplot(data[x], kde=True)
-        
+
     # Scatter Plot
-    elif plot_type == 'scatter':
+    elif plot_type == "scatter":
         sns.scatterplot(x=x, y=y, hue=hue, data=data)
-        
+
     # Line Plot
-    elif plot_type == 'line':
+    elif plot_type == "line":
         sns.lineplot(x=x, y=y, hue=hue, data=data)
-        
+
     # Count Plot (for categorical columns)
-    elif plot_type == 'count':
+    elif plot_type == "count":
         sns.countplot(x=x, data=data, hue=hue)
-    
+
     # Set plot details
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    
+
     # Show the plot
     plt.show()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Network Anomaly Detection")
@@ -565,54 +749,63 @@ def parse_args():
         "--label_column", type=str, required=True, help="Name of the label column"
     )
     parser.add_argument(
-        "--scale", action='store_true', help="Whether to scale numerical features"
+        "--scale", action="store_true", help="Whether to scale numerical features"
     )
     parser.add_argument(
-        "--feature_selection", action='store_true', help="Whether to perform feature selection"
+        "--feature_selection",
+        action="store_true",
+        help="Whether to perform feature selection",
     )
     parser.add_argument(
         "--k_features", type=int, default=10, help="Number of top features to select"
     )
+    parser.add_argument(
+        "--balance", action="store_true", help="Balance the classes in the dataset"
+    )
     # Add more arguments as needed
     return parser.parse_args()
 
+
 # Load the data from file
 def main():
-    
+
     args = parse_args()
-    
+
     # Load and preprocess data
     logging.info("Loading data...")
+
     df = load_data(args.data_path)
     logging.info("Data loaded successfully.")
-    
+
     logging.info("Preprocessing data...")
     df, le, scaler = preprocess_data(
-        df, 
-        label_column=args.label_column, 
-        scale=args.scale, 
+        df,
+        label_column=args.label_column,
+        scale=args.scale,
         feature_selection=args.feature_selection,
-        k_features=args.k_features
+        k_features=args.k_features,
     )
     logging.info("Data preprocessing completed.")
-    
+
     # Split the data
     logging.info("Splitting data into training and testing sets...")
     X_train, X_test, y_train, y_test = split_data(df, label_column=args.label_column)
-    logging.info(f"Data split completed. Training samples: {X_train.shape[0]}, Testing samples: {X_test.shape[0]}")
-    
+    logging.info(
+        f"Data split completed. Training samples: {X_train.shape[0]}, Testing samples: {X_test.shape[0]}"
+    )
+
     # Plot a count of classes
     logging.info("Generating class distribution plot...")
     generate_plot(
-        data=df, 
-        plot_type='count', 
-        x=args.label_column, 
-        title='Count of Classes', 
-        xlabel='Class', 
-        ylabel='Count'
+        data=df,
+        plot_type="count",
+        x=args.label_column,
+        title="Count of Classes",
+        xlabel="Class",
+        ylabel="Count",
     )
     logging.info("Class distribution plot generated.")
-       
+
     # Balance classes if specified
     if args.balance:
         logging.info("Balancing classes using SMOTE...")
@@ -620,10 +813,10 @@ def main():
         logging.info(f"Classes balanced. New training samples: {X_train.shape[0]}")
     else:
         logging.info("Class balancing not performed.")
-    
+
     # Initialize a list to collect metrics
     all_metrics = []
-    
+
     # Iterate over models
     for model_name, model in MODELS.items():
         logging.info(f"Training model: {model_name}")
@@ -644,40 +837,55 @@ def main():
         best_clf = grid_search.best_estimator_
         logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
 
+        # Save the best parameters
+        best_params = grid_search.best_params_
+        save_best_params(model_name, best_params)
+
         # Evaluate
         metrics = evaluate_model(
-            best_clf, 
-            X_train, 
-            y_train, 
-            X_test, 
-            y_test, 
-            label_encoder=le, 
-            model_name=model_name
+            best_clf,
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+            label_encoder=le,
+            model_name=model_name,
+            plot_pr_curve=True,  # Enable plotting PR curve
         )
         logging.info(f"{model_name} Metrics: {metrics}")
-        
+
         # Append metrics to the list
         all_metrics.append(metrics)
-        
+
         # Save the model
         model_filename = f"best_model_{model_name.replace(' ', '_')}.pkl"
         joblib.dump(best_clf, model_filename)
         logging.info(f"Model saved to {model_filename}")
 
-        if hasattr(best_clf, 'feature_importances_'):
-            export_feature_importances(best_clf, feature_names=X_train.columns, file_path=f"feature_importances_{model_name.replace(' ', '_')}.csv")
+        if hasattr(best_clf, "feature_importances_"):
+            export_feature_importances(
+                best_clf,
+                feature_names=X_train.columns,
+                file_path=f"feature_importances_{model_name.replace(' ', '_')}.csv",
+            )
         else:
             logging.info(f"{model_name} does not support feature importances.")
-    
+
     # After all models have been evaluated, save the metrics to a CSV file
     if all_metrics:
         metrics_df = pd.DataFrame(all_metrics)
         metrics_filename = "model_evaluation_metrics.csv"
+        # Ensure the directory exists
+        (
+            os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
+            if os.path.dirname(metrics_filename)
+            else None
+        )
         metrics_df.to_csv(metrics_filename, index=False)
         logging.info(f"All model metrics saved to {metrics_filename}")
     else:
         logging.warning("No metrics to save.")
 
+
 if __name__ == "__main__":
     main()
-
