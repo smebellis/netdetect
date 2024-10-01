@@ -73,3 +73,6 @@ class Config:
             ),
             "Naïve Bayes": GaussianNB(),
         }
+
+
+config = Config()

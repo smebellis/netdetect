@@ -33,6 +33,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 
+from config import config
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -40,59 +42,7 @@ logging.basicConfig(
     handlers=[logging.FileHandler("file_load.log"), logging.StreamHandler(sys.stdout)],
 )
 
-# Constants
-DEFAULT_TEST_SIZE = 0.3
-DEFAULT_RANDOM_STATE = 42
-FEATURE_IMPORTANCE_THRESHOLD = 0.01
-
-# Parameter grid specific to RandomForestClassifier
-PARAM_GRID_RF = {
-    "n_estimators": [50, 75, 100],
-    "max_samples": [0.25, 0.5, 0.75],
-    "max_depth": [2],
-    "criterion": ["gini", "entropy"],
-}
-
-# Parameter grids for different classifiers
-PARAM_GRID_DT = {
-    "max_depth": [None, 10, 20, 30],
-    "min_samples_split": [2, 5, 10],
-    "min_samples_leaf": [1, 2, 4],
-    "criterion": ["gini", "entropy"],
-}
-
-PARAM_GRID_GNB = {
-    # GaussianNB has limited hyperparameters, but you can adjust var_smoothing
-    "var_smoothing": np.logspace(-9, -7, num=3)
-}
-
-# Update MODELS with corresponding parameter grids
-MODEL_PARAM_GRIDS = {
-    "Random Forest": PARAM_GRID_RF,
-    "Decision Tree": PARAM_GRID_DT,
-    "Naïve Bayes": PARAM_GRID_GNB,
-}
-
-SCORING_METRICS = {
-    "accuracy": "accuracy",
-    "recall": "recall_weighted",
-    "precision": "precision_weighted",
-    "f1": "f1_weighted",
-}
-
-MODELS = {
-    "Random Forest": RandomForestClassifier(
-        random_state=DEFAULT_RANDOM_STATE, verbose=2
-    ),
-    "Decision Tree": DecisionTreeClassifier(random_state=DEFAULT_RANDOM_STATE),
-    "Naïve Bayes": GaussianNB(),
-}
-
-# Directory Paths
-MODELS_DIR = "models"
-PARAMS_DIR = "model_parameters"
-FEATURE_IMPORTANCES_DIR = "feature_importances"
-METRICS_DIR = "metrics"
+random_state = config.DEFAULT_RANDOM_STATE
 
 
 def clean_data(
@@ -320,7 +270,9 @@ def preprocess_data(
 
 
 # Split the data
-def split_data(df, label_column, test_size=0.3, random_state=DEFAULT_RANDOM_STATE):
+def split_data(
+    df, label_column, test_size=config.DEFAULT_TEST_SIZE, random_state=random_state
+):
     X = df.drop(label_column, axis=1)
     y = df[label_column]
 
@@ -800,19 +752,25 @@ def parse_args():
 # Load the data from file
 def main():
 
-    args = parse_args()
+    try:
+        args = parse_args()
+    except Exception as e:
+        logging.error(f"Error parsing arguments: {e}")
+        return
 
     # Ensure the directories exist for saving
     logging.info("Creating directories for saving...")
-    for directory in [MODELS_DIR, PARAMS_DIR, FEATURE_IMPORTANCES_DIR, METRICS_DIR]:
+    directories = config.DIRECTORIES
+    for directory in directories.values():
         os.makedirs(directory, exist_ok=True)
+    logging.info("Directories created or already exist.")
 
-    # Load and preprocess data
+    # Load data
     logging.info("Loading data...")
-
     df = load_data(args.data_path)
     logging.info("Data loaded successfully.")
 
+    # Preprocess the data
     logging.info("Preprocessing data...")
     df, le, scaler = preprocess_data(
         df,
@@ -825,7 +783,12 @@ def main():
 
     # Split the data
     logging.info("Splitting data into training and testing sets...")
-    X_train, X_test, y_train, y_test = split_data(df, label_column=args.label_column)
+    X_train, X_test, y_train, y_test = split_data(
+        df,
+        label_column=args.label_column,
+        test_size=config.DEFAULT_TEST_SIZE,
+        random_state=config.DEFAULT_RANDOM_STATE,
+    )
     logging.info(
         f"Data split completed. Training samples: {X_train.shape[0]}, Testing samples: {X_test.shape[0]}"
     )
@@ -839,6 +802,9 @@ def main():
         title="Count of Classes",
         xlabel="Class",
         ylabel="Count",
+        save_path=os.path.join(
+            config.DIRECTORIES["metrics_dir"], "class_distribution.png"
+        ),
     )
     logging.info("Class distribution plot generated.")
 
@@ -854,15 +820,24 @@ def main():
     all_metrics = []
 
     # Iterate over models
-    for model_name, model in MODELS.items():
+    for model_name, model in config.MODELS.items():
         logging.info(f"Training model: {model_name}")
+
+        param_grid = config.MODEL_PARAM_GRIDS.get(model_name, {})
+        if not param_grid:
+            logging.warning(
+                f"No parameter grid found for {model_name}. Skipping GridSearchCV."
+            )
+            continue
+
         grid_search = GridSearchCV(
             estimator=model,
-            param_grid=MODEL_PARAM_GRIDS.get(model_name, {}),
-            scoring=SCORING_METRICS,
+            param_grid=param_grid,
+            scoring=config.SCORING_METRICS,
             refit="f1",
             cv=StratifiedKFold(n_splits=5),
             n_jobs=-1,
+            verbose=2,
         )
 
         start_time = time.time()
@@ -875,10 +850,12 @@ def main():
 
         # Saving best parameters
         parameter_filename = os.path.join(
-            args.params_dir, f"best_params_{model_name.replace(' ', '_')}.json"
+            config.DIRECTORIES["params_dir"],
+            f"best_params_{model_name.replace(' ', '_')}.json",
         )
         best_params = grid_search.best_params_
         save_best_params(model_name, best_params, parameter_filename)
+        logging.info(f"Best parameters saved to {parameter_filename}")
 
         # Evaluate
         metrics = evaluate_model(
@@ -890,6 +867,10 @@ def main():
             label_encoder=le,
             model_name=model_name,
             plot_pr_curve=True,  # Enable plotting PR curve
+            save_path=os.path.join(
+                config.DIRECTORIES["metrics_dir"],
+                f"pr_curve_{model_name.replace(' ', '_')}.png",
+            ),
         )
         logging.info(f"{model_name} Metrics: {metrics}")
 
@@ -897,31 +878,32 @@ def main():
         all_metrics.append(metrics)
 
         # Save the model
-        model_filename = f"best_model_{model_name.replace(' ', '_')}.pkl"
+        model_filename = os.path.join(
+            config.DIRECTORIES["models_dir"],
+            f"best_model_{model_name.replace(' ', '_')}.joblib",
+        )
         joblib.dump(best_clf, model_filename)
         logging.info(f"Model saved to {model_filename}")
 
+        # Export feature importances if available
         if hasattr(best_clf, "feature_importances_"):
             export_feature_importances(
                 best_clf,
                 feature_names=X_train.columns,
                 file_path=os.path.join(
-                    args.feature_importances_dir,
+                    config.DIRECTORIES["feature_importances_dir"],
                     f"feature_importances_{model_name.replace(' ', '_')}.csv",
                 ),
             )
+            logging.info(f"Feature importances saved for {model_name}.")
         else:
             logging.info(f"{model_name} does not support feature importances.")
 
     # After all models have been evaluated, save the metrics to a CSV file
     if all_metrics:
         metrics_df = pd.DataFrame(all_metrics)
-        metrics_filename = args.metrics_path
-        # Ensure the directory exists
-        (
-            os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
-            if os.path.dirname(metrics_filename)
-            else None
+        metrics_filename = os.path.join(
+            config.DIRECTORIES["metrics_dir"], "all_model_metrics.csv"
         )
         metrics_df.to_csv(metrics_filename, index=False)
         logging.info(f"All model metrics saved to {metrics_filename}")
