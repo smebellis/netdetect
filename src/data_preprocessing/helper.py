@@ -3,7 +3,8 @@ import logging
 import os
 from collections import Counter
 from glob import glob
-from typing import Optional, Path, Union
+from typing import Optional, Union
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd

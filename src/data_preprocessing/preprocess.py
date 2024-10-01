@@ -143,9 +143,9 @@ def main():
         title="Count of Classes",
         xlabel="Class",
         ylabel="Count",
-        save_path=os.path.join(
-            config.DIRECTORIES["metrics_dir"], "class_distribution.png"
-        ),
+        # save_path=os.path.join(
+        #     config.DIRECTORIES["metrics_dir"], "class_distribution.png"
+        # ),
     )
     logging.info("Class distribution plot generated.")
 
@@ -208,10 +208,10 @@ def main():
             label_encoder=le,
             model_name=model_name,
             plot_pr_curve=True,  # Enable plotting PR curve
-            save_path=os.path.join(
-                config.DIRECTORIES["metrics_dir"],
-                f"pr_curve_{model_name.replace(' ', '_')}.png",
-            ),
+            # save_path=os.path.join(
+            #     config.DIRECTORIES["metrics_dir"],
+            #     f"pr_curve_{model_name.replace(' ', '_')}.png",
+            # ),
         )
         logging.info(f"{model_name} Metrics: {metrics}")
 

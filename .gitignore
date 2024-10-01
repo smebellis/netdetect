@@ -21,3 +21,6 @@ models/
 .DS_Store
 *.pkl
 *.log
+*.png
+*.csv
+
