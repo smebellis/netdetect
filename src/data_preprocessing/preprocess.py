@@ -13,6 +13,8 @@ from glob import glob
 from tqdm import tqdm
 import seaborn as sns
 
+from .plot import generate_plot
+
 import joblib
 import pandas as pd
 from imblearn.over_sampling import SMOTE
