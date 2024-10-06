@@ -21,7 +21,7 @@ def generate_plot(data, plot_type='bar', x=None, y=None, title='', xlabel='', yl
     
     Supported plot types: 'bar', 'hist', 'scatter', 'line', 'count'.
     """
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(len(x)*2, len(y)*1))
     
     # Bar Plot
     if plot_type == 'bar':
