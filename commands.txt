@@ -1,0 +1,7 @@
+python src/preprocess.py --data_path "/home/smebellis/ece579/final_project/network_anomaly_detection/data/processed/combined_df.pkl" --label_column " Label"
+
+python src/preprocess.py --data_path "/home/smebellis/ece579/final_project/network_anomaly_detection/data/processed/combined_df.pkl" --label_column " Label" --feature_selection --k_features 20 --params_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/model_parameters" --models_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/models" --plots_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/plots"
+
+
+# Current Working Command line
+python src/preprocess.py --data_path "/home/smebellis/ece579/final_project/network_anomaly_detection/data/processed/combined_df.pkl" --label_column " Label" --feature_selection --k_features 20 --params_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/model_parameters" --models_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/models" --plots_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/plots"

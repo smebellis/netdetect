@@ -1,0 +1,21 @@
+Feature,Importance
+Bwd Packet Length Std,0.31588054
+Idle Mean,0.25715688
+Bwd Packet Length Mean,0.14070132
+Average Packet Size,0.094172865
+Packet Length Mean,0.055842254
+Max Packet Length,0.033218343
+FIN Flag Count,0.027128397
+Bwd IAT Std,0.0133066615
+Flow IAT Std,0.011485985
+Idle Min,0.00989762
+Packet Length Std,0.009442018
+Fwd IAT Std,0.005924432
+Idle Max,0.005757417
+Fwd IAT Max,0.0048575597
+Fwd IAT Total,0.0047402293
+Flow Duration,0.0036924388
+Bwd Packet Length Max,0.003525278
+Flow IAT Max,0.002979959
+Packet Length Variance,0.00028976216
+Avg Bwd Segment Size,0.0

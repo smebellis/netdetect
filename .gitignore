@@ -9,7 +9,8 @@ venv/
 # Data files
 data/raw/
 data/processed/
-models/
+archive/
+# models/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints
@@ -21,6 +22,6 @@ models/
 .DS_Store
 *.pkl
 *.log
-*.png
-*.csv
+# *.png
+# *.csv
 
