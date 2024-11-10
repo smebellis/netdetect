@@ -4,17 +4,13 @@ from collections import Counter
 from glob import glob
 from pathlib import Path
 from typing import Optional, Union
+import argparse
 
-<<<<<<< HEAD:src/helper.py
 import matplotlib.pyplot as plt
 import numpy as np
-=======
-from .plot import generate_plot
-
-import joblib
->>>>>>> ddfc6ac31847518a8cf3941d72b17b0ef241b4cf:src/data_preprocessing/preprocess.py
 import pandas as pd
 import seaborn as sns
+from typing import Optional, List, Dict
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
@@ -35,176 +31,10 @@ from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 from config import config
-from logger_singleton import get_logger
+from LoggerSingleton import get_logger
 
 # Configure logger
 logger = get_logger(__name__)
-
-
-def file_load(file_path: Union[str, Path]) -> pd.DataFrame:
-    """
-    Loads a DataFrame from a pickle file if it exists. If not, it reads CSV files from a specified directory,
-    cleans and concatenates them into a single DataFrame, saves it as a pickle file, and returns the DataFrame.
-
-    Args:
-        file_path (str or Path): The path to the pickle file.
-
-    Returns:
-        pd.DataFrame: The loaded or newly created DataFrame.
-
-    Raises:
-        FileNotFoundError: If no CSV files are found in the specified directory.
-        Exception: For any other exceptions that may occur during file operations.
-    """
-    file_path = Path(file_path)
-    if not file_path.exists():
-        logger.info(f"File does not exist: {file_path}")
-
-        csv_dir = Path("../data/raw/MachineLearningCSV/MachineLearningCVE/")
-        csv_files = list(csv_dir.glob("*.csv"))
-        if not csv_files:
-            logger.error("No CSV files found in the specified directory.")
-            raise FileNotFoundError("No CSV files found in the specified directory.")
-
-        dataframes = []
-        for file in tqdm(csv_files, desc="Processing CSV Files"):
-            try:
-                logger.info(f"Reading CSV file: {file}")
-                df = pd.read_csv(file)
-                cleaned = clean_data(df)
-                dataframes.append(cleaned)
-            except Exception as e:
-                logger.error(f"Error reading {file}: {e}")
-                continue  # Skip files that cause errors
-
-        if not dataframes:
-            logger.error("No dataframes were loaded successfully.")
-            raise ValueError("No dataframes were loaded successfully.")
-
-        try:
-            concatenated_df = pd.concat(dataframes, ignore_index=True)
-            logger.info(f"Concatenated {len(dataframes)} dataframes.")
-        except Exception as e:
-            logger.error(f"Error concatenating dataframes: {e}")
-            raise
-
-        try:
-            concatenated_df.to_pickle(file_path)
-            logger.info(f"Saved concatenated DataFrame to {file_path}")
-        except Exception as e:
-            logger.error(f"Error saving pickle file: {e}")
-            raise
-
-        return concatenated_df
-    else:
-        logger.info(f"Loading DataFrame from pickle file: {file_path}")
-        try:
-            return pd.read_pickle(file_path)
-        except Exception as e:
-            logger.error(f"Error loading pickle file: {e}")
-            raise
-
-
-def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
-    """
-    Loads a DataFrame from a pickle file if it exists. If not, it reads CSV files from a specified directory,
-    cleans and concatenates them into a single DataFrame, saves it as a pickle file, and returns the DataFrame.
-
-    This function wraps around `file_load` to provide additional logger and error handling.
-
-    Args:
-        file_path (str or Path): The path to the pickle file.
-
-    Returns:
-        pd.DataFrame: The loaded or newly created DataFrame.
-
-    Raises:
-        FileNotFoundError: If no CSV files are found in the specified directory and the pickle file does not exist.
-        pd.errors.EmptyDataError: If CSV files are empty.
-        Exception: For any other exceptions that may occur during file operations.
-    """
-    try:
-        df = file_load(file_path)
-        logger.info(f"Data loaded successfully from {file_path}")
-        return df
-    except FileNotFoundError as fnf_error:
-        logger.error(f"File not found: {fnf_error}")
-        raise
-    except pd.errors.EmptyDataError as ede_error:
-        logger.error(f"No data: {ede_error}")
-        raise
-    except Exception as e:
-        logger.error(
-            f"An unexpected error occurred while loading data from {file_path}: {e}"
-        )
-        raise
-
-
-def clean_data(
-    df: pd.DataFrame,
-    replace_inf: bool = True,
-    drop_na: bool = True,
-    drop_duplicates: bool = True,
-    subset_duplicates: Optional[list] = None,
-    inplace: bool = False,
-) -> pd.DataFrame:
-    """
-    Cleans the input DataFrame by handling infinite values, missing data, and duplicates.
-
-    Args:
-        df (pd.DataFrame): The DataFrame to clean.
-        replace_inf (bool, optional): Whether to replace infinite values with NaN. Defaults to True.
-        drop_na (bool, optional): Whether to drop rows containing NaN values. Defaults to True.
-        drop_duplicates (bool, optional): Whether to drop duplicate rows. Defaults to True.
-        subset_duplicates (list, optional): Columns to consider when identifying duplicates. Defaults to None.
-        inplace (bool, optional): Whether to perform operations in place. Defaults to False.
-
-    Returns:
-        pd.DataFrame: The cleaned DataFrame.
-
-    Raises:
-        TypeError: If the input is not a pandas DataFrame.
-    """
-    if not isinstance(df, pd.DataFrame):
-        logger.error("Input is not a pandas DataFrame.")
-        raise TypeError("Input must be a pandas DataFrame.")
-
-    df_cleaned = df.copy() if not inplace else df
-
-    # Replace infinite values with NaN
-    if replace_inf:
-        inf_count = np.isinf(df_cleaned).sum().sum()
-        df_cleaned.replace([np.inf, -np.inf], np.nan, inplace=True)
-        logger.info(f"Replaced {inf_count} infinite values with NaN.")
-
-    # Drop rows with NaN values
-    if drop_na:
-        initial_shape = df_cleaned.shape
-        df_cleaned.dropna(inplace=True)
-        final_shape = df_cleaned.shape
-        dropped_na = initial_shape[0] - final_shape[0]
-        logger.info(f"Dropped {dropped_na} rows containing NaN values.")
-
-    # Drop duplicate rows
-    if drop_duplicates:
-        if subset_duplicates:
-            duplicated = df_cleaned.duplicated(subset=subset_duplicates).sum()
-            df_cleaned.drop_duplicates(subset=subset_duplicates, inplace=True)
-            logger.info(
-                f"Dropped {duplicated} duplicate rows based on subset {subset_duplicates}."
-            )
-        else:
-            duplicated = df_cleaned.duplicated().sum()
-            df_cleaned.drop_duplicates(inplace=True)
-            logger.info(f"Dropped {duplicated} duplicate rows.")
-
-    return df_cleaned
-
-
-def clean_column_names(df):
-    """Clean DataFrame column names by stripping whitespace"""
-    df.columns = df.columns.str.strip()
-    return df
 
 
 def file_load_large_csv(
@@ -217,83 +47,133 @@ def file_load_large_csv(
     return pd.concat(chunks, ignore_index=True)
 
 
-# Encode the labels
-def encode_labels(df, label_column):
-    le = LabelEncoder()
-    df[label_column] = le.fit_transform(df[label_column])
-
-    return df, le
-
-
-# Scale the numerical data
-def scale_data(df, numerical_columns):
-    scaler = StandardScaler()
-    df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
-
-    return df, scaler
-
-
-def balance_classes(X_train, y_train):
-    smote = SMOTE(random_state=42)
-    try:
-        X_res, y_res = smote.fit_resample(X_train, y_train)
-        logger.info(f"Successfully balanced classes. New shape: {X_res.shape}")
-        return X_res, y_res
-    except Exception as e:
-        logger.error(f"SMOTE failed: {e}")
-        raise ValueError(f"SMOTE failed: {e}")
-
-
-def select_features(df, label_column, k=10):
+def parse_kwargs(kwargs_list: Optional[List[str]]) -> Dict:
     """
-    Select top k features while preserving the label column
+    Parses a list of key=value strings into a dictionary.
 
     Args:
-        df (pd.DataFrame): Input dataframe
-        label_column (str): Name of the label column
-        k (int): Number of features to select
+        kwargs_list (List[str], optional): List of key=value strings.
 
     Returns:
-        pd.DataFrame: DataFrame with selected features and label column
+        Dict: Parsed keyword arguments.
     """
-    X = df.drop(label_column, axis=1)
-    y = df[label_column]
-    selector = SelectKBest(score_func=f_classif, k=k)
-    X_new = selector.fit_transform(X, y)
-    selected_features = X.columns[selector.get_support()]
-    logger.info(f"Selected top {k} features: {list(selected_features)}")
+    kwargs = {}
+    if kwargs_list:
+        for item in kwargs_list:
+            key, value = item.split("=")
+            # Attempt to convert to appropriate type
+            if value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
+            else:
+                try:
+                    value = int(value)
+                except ValueError:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        pass  # Keep as string
+            kwargs[key] = value
+    return kwargs
 
-    # Create a dataframe with the selected features
-    X_selected_df = pd.DataFrame(X_new, columns=selected_features, index=df.index)
 
-    # Add the label column back to the dataframe
-    result_df = pd.concat([X_selected_df, df[label_column]], axis=1)
-
-    return result_df
-
-
-def preprocess_data(
-    df, label_column, scale=False, feature_selection=False, k_features=10
-):
-
-    # Clean column names
-    df = clean_column_names(df)
-    label_column = label_column.strip()
-    # Encode labels
-    df, le = encode_labels(df, label_column)
-
-    # Scale data if required
-    if scale:
-        numerical_columns = df.select_dtypes(include=["number"]).columns.tolist()
-        df, scaler = scale_data(df, numerical_columns)
-    else:
-        scaler = None
-
-    # Feature selection if required
-    if feature_selection:
-        df = select_features(df, label_column, k=k_features)
-
-    return df, le, scaler
+def parse_args():
+    parser = argparse.ArgumentParser(description="Network Anomaly Detection")
+    parser.add_argument(
+        "--data_path", type=str, required=True, help="Path to the pickle data file"
+    )
+    parser.add_argument(
+        "--csv_dir",
+        type=str,
+        required=False,
+        default="../data/raw/MachineLearningCSV/MachineLearningCVE/",
+        help="Directory containing CSV files if pickle does not exist",
+    )
+    parser.add_argument(
+        "--label_column", type=str, required=True, help="Name of the label column"
+    )
+    parser.add_argument(
+        "--scale", action="store_true", help="Whether to scale numerical features"
+    )
+    parser.add_argument(
+        "--feature_selection",
+        action="store_true",
+        help="Whether to perform feature selection",
+    )
+    parser.add_argument(
+        "--k_features", type=int, default=10, help="Number of top features to select"
+    )
+    parser.add_argument(
+        "--balance_methods",
+        type=str,
+        nargs="+",
+        choices=["smote", "weighted_loss", "vae"],
+        default=[],
+        help="Balancing methods to apply. Options: 'smote', 'weighted_loss', 'vae'.",
+    )
+    parser.add_argument(
+        "--smote_kwargs",
+        type=str,
+        nargs="*",
+        help="Additional keyword arguments for SMOTE in key=value format.",
+    )
+    parser.add_argument(
+        "--vae_input_dim",
+        type=int,
+        help="Input dimension for VAE.",
+    )
+    parser.add_argument(
+        "--vae_latent_dim",
+        type=int,
+        help="Latent dimension for VAE.",
+    )
+    parser.add_argument(
+        "--vae_epochs",
+        type=int,
+        default=100,
+        help="Number of epochs to train VAE.",
+    )
+    parser.add_argument(
+        "--vae_batch_size",
+        type=int,
+        default=64,
+        help="Batch size for VAE training.",
+    )
+    parser.add_argument(
+        "--vae_learning_rate",
+        type=float,
+        default=1e-3,
+        help="Learning rate for VAE optimizer.",
+    )
+    parser.add_argument(
+        "--metrics_path",
+        type=str,
+        default="metrics/model_evaluation_metrics.csv",
+        help="Path to save evaluation metrics",
+    )
+    parser.add_argument(
+        "--params_dir",
+        type=str,
+        default="model_parameters",
+        help="Directory to save model parameters",
+    )
+    parser.add_argument(
+        "--models_dir",
+        type=str,
+        default="models",
+        help="Directory to save trained models",
+    )
+    parser.add_argument(
+        "--feature_importances_dir",
+        type=str,
+        default="feature_importances",
+        help="Directory to save feature importances",
+    )
+    parser.add_argument(
+        "--plots_dir", type=str, default="plots", help="Directory to save plots"
+    )
+    return parser.parse_args()
 
 
 # Split the data
@@ -313,20 +193,6 @@ def split_data(
 
 def decode_labels(df, label_column, le):
     return le.inverse_transform(df[label_column])
-
-
-def calculate_class_weights(y_train):
-    class_counts = Counter(y_train)
-
-    total_samples = sum(class_counts.values())
-    num_classes = len(class_counts)
-
-    class_weights = {
-        cls: total_samples / (num_classes * count)
-        for cls, count in class_counts.items()
-    }
-
-    return class_weights
 
 
 def evaluate_model(
@@ -694,7 +560,6 @@ def save_best_params(model_name, best_params, parameter_filename):
         logger.error(f"Failed to save best parameters for {model_name}: {e}")
 
 
-<<<<<<< HEAD:src/helper.py
 # Function to generate plots
 def generate_plot(
     data, plot_type="bar", x=None, y=None, title="", xlabel="", ylabel="", hue=None
@@ -745,191 +610,3 @@ def generate_plot(
     plt.show(block=False)
     plt.pause(5)
     plt.close()
-=======
-def parse_args():
-    parser = argparse.ArgumentParser(description="Network Anomaly Detection")
-    parser.add_argument(
-        "--data_path", type=str, required=True, help="Path to the data file"
-    )
-    parser.add_argument(
-        "--label_column", type=str, required=True, help="Name of the label column"
-    )
-    parser.add_argument(
-        "--balance", action="store_true", help="Whether to balance classes using SMOTE"
-    )
-    parser.add_argument(
-        "--scale", action="store_true", help="Whether to scale numerical features"
-    )
-    parser.add_argument(
-        "--feature_selection",
-        action="store_true",
-        help="Whether to perform feature selection",
-    )
-    parser.add_argument(
-        "--k_features", type=int, default=10, help="Number of top features to select"
-    )
-    parser.add_argument(
-        "--metrics_path",
-        type=str,
-        default="metrics/model_evaluation_metrics.csv",
-        help="Path to save evaluation metrics",
-    )
-    parser.add_argument(
-        "--params_dir",
-        type=str,
-        default="model_parameters",
-        help="Directory to save model parameters",
-    )
-    parser.add_argument(
-        "--models_dir",
-        type=str,
-        default="models",
-        help="Directory to save trained models",
-    )
-    parser.add_argument(
-        "--feature_importances_dir",
-        type=str,
-        default="feature_importances",
-        help="Directory to save feature importances",
-    )
-    parser.add_argument(
-        "--plots_dir", type=str, default="plots", help="Directory to save plots"
-    )
-    return parser.parse_args()
-
-
-# Load the data from file
-def main():
-
-    args = parse_args()
-
-    # Ensure the directories exist for saving
-    logging.info("Creating directories for saving...")
-    for directory in [MODELS_DIR, PARAMS_DIR, FEATURE_IMPORTANCES_DIR, METRICS_DIR]:
-        os.makedirs(directory, exist_ok=True)
-
-    # Load and preprocess data
-    logging.info("Loading data...")
-
-    df = load_data(args.data_path)
-    logging.info("Data loaded successfully.")
-
-    logging.info("Preprocessing data...")
-    df, le, scaler = preprocess_data(
-        df,
-        label_column=args.label_column,
-        scale=args.scale,
-        feature_selection=args.feature_selection,
-        k_features=args.k_features,
-    )
-    logging.info("Data preprocessing completed.")
-
-    # Split the data
-    logging.info("Splitting data into training and testing sets...")
-    X_train, X_test, y_train, y_test = split_data(df, label_column=args.label_column)
-    logging.info(
-        f"Data split completed. Training samples: {X_train.shape[0]}, Testing samples: {X_test.shape[0]}"
-    )
-
-    # Plot a count of classes
-    logging.info("Generating class distribution plot...")
-    generate_plot(
-        data=df,
-        plot_type="count",
-        x=args.label_column,
-        title="Count of Classes",
-        xlabel="Class",
-        ylabel="Count",
-    )
-    logging.info("Class distribution plot generated.")
-
-    # Balance classes if specified
-    if args.balance:
-        logging.info("Balancing classes using SMOTE...")
-        X_train, y_train = balance_classes(X_train, y_train)
-        logging.info(f"Classes balanced. New training samples: {X_train.shape[0]}")
-    else:
-        logging.info("Class balancing not performed.")
-
-    # Initialize a list to collect metrics
-    all_metrics = []
-
-    # Iterate over models
-    for model_name, model in MODELS.items():
-        logging.info(f"Training model: {model_name}")
-        grid_search = GridSearchCV(
-            estimator=model,
-            param_grid=MODEL_PARAM_GRIDS.get(model_name, {}),
-            scoring=SCORING_METRICS,
-            refit="f1",
-            cv=StratifiedKFold(n_splits=5),
-            n_jobs=-1,
-        )
-
-        start_time = time.time()
-        grid_search.fit(X_train, y_train)
-        duration = time.time() - start_time
-        logging.info(f"{model_name} training completed in {duration:.2f} seconds.")
-
-        best_clf = grid_search.best_estimator_
-        logging.info(f"Best parameters for {model_name}: {grid_search.best_params_}")
-
-        # Saving best parameters
-        parameter_filename = os.path.join(
-            args.params_dir, f"best_params_{model_name.replace(' ', '_')}.json"
-        )
-        best_params = grid_search.best_params_
-        save_best_params(model_name, best_params, parameter_filename)
-
-        # Evaluate
-        metrics = evaluate_model(
-            best_clf,
-            X_train,
-            y_train,
-            X_test,
-            y_test,
-            label_encoder=le,
-            model_name=model_name,
-            plot_pr_curve=True,  # Enable plotting PR curve
-        )
-        logging.info(f"{model_name} Metrics: {metrics}")
-
-        # Append metrics to the list
-        all_metrics.append(metrics)
-
-        # Save the model
-        model_filename = f"best_model_{model_name.replace(' ', '_')}.pkl"
-        joblib.dump(best_clf, model_filename)
-        logging.info(f"Model saved to {model_filename}")
-
-        if hasattr(best_clf, "feature_importances_"):
-            export_feature_importances(
-                best_clf,
-                feature_names=X_train.columns,
-                file_path=os.path.join(
-                    args.feature_importances_dir,
-                    f"feature_importances_{model_name.replace(' ', '_')}.csv",
-                ),
-            )
-        else:
-            logging.info(f"{model_name} does not support feature importances.")
-
-    # After all models have been evaluated, save the metrics to a CSV file
-    if all_metrics:
-        metrics_df = pd.DataFrame(all_metrics)
-        metrics_filename = args.metrics_path
-        # Ensure the directory exists
-        (
-            os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
-            if os.path.dirname(metrics_filename)
-            else None
-        )
-        metrics_df.to_csv(metrics_filename, index=False)
-        logging.info(f"All model metrics saved to {metrics_filename}")
-    else:
-        logging.warning("No metrics to save.")
-
-
-if __name__ == "__main__":
-    main()
->>>>>>> ddfc6ac31847518a8cf3941d72b17b0ef241b4cf:src/data_preprocessing/preprocess.py

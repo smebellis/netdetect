@@ -42,10 +42,10 @@ class Config:
     PARAM_GRID_XGB: Dict[str, Any] = field(
         default_factory=lambda: {
             "n_estimators": [50, 100, 150],
-            "learning_rate": [0.01, 0.1, 0.2],
-            "max_depth": [3, 5, 7],
+            "learning_rate": [0.01, 0.1, 0.3],
+            "max_depth": [3, 6, 10],
             "gamma": [0, 0.1, 0.3],
-            "subsample": [0.8, 1.0],
+            "subsample": [0.6, 0.8, 1.0],
         }
     )
 

@@ -51,26 +51,3 @@ def vae_loss(recon_x, x, mu, logvar):
     BCE = nn.functional.binary_cross_entropy(recon_x, x, reduction="sum")
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return BCE + KLD
-
-
-# Model, Optimizer, and Training Loop
-input_dim = 28 * 28  # Example for MNIST
-latent_dim = 20
-vae = VAE(input_dim, latent_dim)
-optimizer = optim.Adam(vae.parameters(), lr=1e-3)
-
-# Training loop (simplified)
-for epoch in range(epochs):
-    for batch in data_loader:
-        x, _ = batch
-        x = Variable(x.view(-1, input_dim))
-        optimizer.zero_grad()
-        recon_x, mu, logvar = vae(x)
-        loss = vae_loss(recon_x, x, mu, logvar)
-        loss.backward()
-        optimizer.step()
-
-# Generate Synthetic Data
-with torch.no_grad():
-    z = torch.randn(batch_size, latent_dim)
-    synthetic_data = vae.decoder(z)
