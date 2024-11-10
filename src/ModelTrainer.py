@@ -59,11 +59,11 @@ class ModelTrainer:
                 refit="f1",
                 cv=StratifiedKFold(n_splits=3),
                 n_jobs=10,
-                verbose=1,
+                verbose=2,
             )
 
             start_time = time.time()
-            grid_search.fit(X_train, y_train, early_stopping_rounds=10)
+            grid_search.fit(X_train, y_train)
             duration = time.time() - start_time
             self.training_times.append(
                 {"model_name": model_name, "training_time": duration}

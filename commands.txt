@@ -8,3 +8,7 @@ python src/preprocess.py --data_path "/home/smebellis/ece579/final_project/netwo
 
 
 python src/main.py --data_path "/home/smebellis/ece579/final_project/network_anomaly_detection/data/processed/combined_df.pkl" --csv_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/data/raw/MachineLearningCSV/MachineLearningCVE" --label_column " Label" --feature_selection --k_features 20 --params_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/model_parameters" --models_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/models" --plots_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/plots" --balance_methods smote --smote_kwargs sampling_strategy=auto --vae_input_dim 20 --vae_latent_dim 10 --vae_epochs 100 --vae_batch_size 64 --vae_learning_rate 1e-3
+
+
+python src/main.py --data_path "/home/smebellis/ece579/final_project/network_anomaly_detection/data/processed/combined_df.pkl" --csv_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/data/raw/MachineLearningCSV/MachineLearningCVE" --label_column " Label" --feature_selection --k_features 20 --params_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/model_parameters" --models_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/models" --plots_dir "/home/smebellis/ece579/final_project/network_anomaly_detection/plots" --balance_methods smote --smote_kwargs sampling_strategy=0.5 --vae_input_dim 20 --vae_latent_dim 10 --vae_epochs 100 --vae_batch_size 64 --vae_learning_rate 1e-3
+

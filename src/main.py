@@ -181,7 +181,6 @@ def main():
             X_test=X_test,
             y_test=y_test,
             label_encoder=le,
-            class_weights=class_weights,
         )
 
     # Save all metrics
