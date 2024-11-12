@@ -69,9 +69,11 @@ class ClassBalancer:
         self.random_state = random_state
         self.smote_kwargs = smote_kwargs if smote_kwargs else {}
         self.vae_config = vae_config if vae_config else {}
-        self.device = (
-            device if device else ("cuda" if torch.cuda.is_available() else "cpu")
-        )
+        self.device = "cpu"
+        # TODO:  uncomment this when the problem with VAE is figured out
+        # self.device = (
+        #     device if device else ("cuda" if torch.cuda.is_available() else "cpu")
+        # )
         self.logger = logger
 
         # Validate methods
@@ -266,12 +268,16 @@ class ClassBalancer:
         # Extract minority class samples
         X_minority = X[y == minority_class].values.astype(np.float32)
 
-        # Normalize features
-        mean = X_minority.mean(axis=0)
-        std = X_minority.std(axis=0)
-        # To avoid division by zero
-        std_replaced = np.where(std == 0, 1, std)
-        X_minority_norm = (X_minority - mean) / std_replaced
+        # Normalize features using Min-Max scaling to get values between 0 and 1
+        X_minority_min = X_minority.min(axis=0)
+        X_minority_max = X_minority.max(axis=0)
+        # Avoid division by zero
+        X_minority_max_replaced = np.where(
+            X_minority_max == X_minority_min, X_minority_min + 1, X_minority_max
+        )
+        X_minority_norm = (X_minority - X_minority_min) / (
+            X_minority_max_replaced - X_minority_min
+        )
 
         # Create TensorDataset
         dataset = TensorDataset(torch.from_numpy(X_minority_norm))
@@ -332,8 +338,10 @@ class ClassBalancer:
             z = torch.randn(num_synthetic, self.latent_dim).to(self.device)
             synthetic_data = self.vae.decoder(z).cpu().numpy()
 
-        # Denormalize synthetic data
-        synthetic_data = synthetic_data * std_replaced + mean
+        # Denormalize synthetic data back to the original range
+        synthetic_data = (
+            synthetic_data * (X_minority_max_replaced - X_minority_min) + X_minority_min
+        )
 
         # Convert to DataFrame
         X_synthetic = pd.DataFrame(synthetic_data, columns=X.columns)

@@ -1,0 +1,6 @@
+{
+    "criterion": "entropy",
+    "max_depth": 2,
+    "max_samples": 0.25,
+    "n_estimators": 75
+}

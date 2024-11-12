@@ -1,0 +1,5 @@
+model_name,training_time
+Random Forest,1640.5510091781616
+Decision Tree,1252.9747700691223
+Naïve Bayes,30.93582010269165
+XGBoost,41162.24761414528
