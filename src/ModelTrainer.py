@@ -58,8 +58,9 @@ class ModelTrainer:
                 scoring=self.scoring_metrics,
                 refit="f1",
                 cv=StratifiedKFold(n_splits=3),
-                n_jobs=10,
-                verbose=2,
+                n_jobs=-1,
+                verbose=3,
+                pre_dispatch=4,
             )
 
             start_time = time.time()

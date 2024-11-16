@@ -37,14 +37,14 @@ from LoggerSingleton import get_logger
 logger = get_logger(__name__)
 
 
-def file_load_large_csv(
-    file_path: Union[str, Path], chunksize: int = 100000
-) -> pd.DataFrame:
-    chunks = []
-    for chunk in pd.read_csv(file_path, chunksize=chunksize):
-        cleaned_chunk = clean_data(chunk)
-        chunks.append(cleaned_chunk)
-    return pd.concat(chunks, ignore_index=True)
+# def file_load_large_csv(
+#     file_path: Union[str, Path], chunksize: int = 100000
+# ) -> pd.DataFrame:
+#     chunks = []
+#     for chunk in pd.read_csv(file_path, chunksize=chunksize):
+#         cleaned_chunk = clean_data(chunk)
+#         chunks.append(cleaned_chunk)
+#     return pd.concat(chunks, ignore_index=True)
 
 
 def parse_kwargs(kwargs_list: Optional[List[str]]) -> Dict:
@@ -610,3 +610,7 @@ def generate_plot(
     plt.show(block=False)
     plt.pause(5)
     plt.close()
+
+
+def save_plot():
+    pass
