@@ -16,7 +16,7 @@ from config import config
 from DataCleaner import DataCleaner
 from DataLoader import DataLoader
 from DataPreprocess import DataPreprocessor
-from helper import split_data, parse_args, parse_kwargs
+from helper import split_data, parse_args, parse_kwargs, generate_plot
 from LoggerSingleton import get_logger
 from ModelTrainer import ModelTrainer
 from ClassBalancer import ClassBalancer
@@ -110,21 +110,6 @@ def main():
         logger.error(f"Error splitting data: {e}")
         return
 
-    # Plot a count of classes
-    # try:
-    #     logger.info("Generating class distribution plot...")
-    #     generate_plot(
-    #         data=df,
-    #         plot_type="count",
-    #         x=args.label_column,
-    #         title="Count of Classes",
-    #         xlabel="Class",
-    #         ylabel="Count",
-    #     )
-    #     logger.info("Class distribution plot generated.")
-    # except Exception as e:
-    #     logger.error(f"Error generating plot: {e}")
-
     # Initialize ClassBalancer if any balancing methods are specified
     if args.balance_methods:
         logger.info("Initializing ClassBalancer...")
@@ -162,6 +147,20 @@ def main():
         X_balanced, y_balanced = X_train, y_train
         class_weights = None
         logger.info("No class balancing methods specified.")
+    # Plot a count of classes
+    # try:
+    #     logger.info("Generating class distribution plot...")
+    #     generate_plot(
+    #         data=X_balanced,
+    #         plot_type="count",
+    #         x=y_balanced,
+    #         title="Count of Classes",
+    #         xlabel="Class",
+    #         ylabel="Count",
+    #     )
+    #     logger.info("Class distribution plot generated.")
+    # except Exception as e:
+    #     logger.error(f"Error generating plot: {e}")
 
     # Initialize ModelTrainer
     model_trainer = ModelTrainer(

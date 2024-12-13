@@ -607,9 +607,9 @@ def generate_plot(
     plt.ylabel(ylabel)
 
     # Show the plot
-    plt.show(block=False)
-    plt.pause(5)
-    plt.close()
+    plt.show()
+    # plt.pause(5)
+    # plt.close()
 
 
 def save_plot():

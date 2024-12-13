@@ -35,19 +35,19 @@ class Config:
     #     }
     # )
 
-    # PARAM_GRID_GNB: Dict[str, Any] = field(
-    #     default_factory=lambda: {"var_smoothing": np.logspace(-9, -7, num=3)}
-    # )
-
-    PARAM_GRID_XGB: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "n_estimators": [50, 100, 150],
-            "learning_rate": [0.01, 0.1, 0.3],
-            "max_depth": [3, 6, 10],
-            "gamma": [0, 0.1, 0.3],
-            "subsample": [0.6, 0.8, 1.0],
-        }
+    PARAM_GRID_GNB: Dict[str, Any] = field(
+        default_factory=lambda: {"var_smoothing": np.logspace(-9, -7, num=3)}
     )
+
+    # PARAM_GRID_XGB: Dict[str, Any] = field(
+    #     default_factory=lambda: {
+    #         "n_estimators": [50, 100, 150],
+    #         "learning_rate": [0.01, 0.1, 0.3],
+    #         "max_depth": [3, 6, 10],
+    #         "gamma": [0, 0.1, 0.3],
+    #         "subsample": [0.6, 0.8, 1.0],
+    #     }
+    # )
 
     MODEL_PARAM_GRIDS: Dict[str, Dict[str, Any]] = field(init=False)
 
@@ -76,8 +76,8 @@ class Config:
         self.MODEL_PARAM_GRIDS = {
             # "Random Forest": self.PARAM_GRID_RF,
             # "Decision Tree": self.PARAM_GRID_DT,
-            # "Naïve Bayes": self.PARAM_GRID_GNB,
-            "XGBoost": self.PARAM_GRID_XGB,
+            "Naïve Bayes": self.PARAM_GRID_GNB,
+            # "XGBoost": self.PARAM_GRID_XGB,
         }
         self.MODELS = {
             # "Random Forest": RandomForestClassifier(
@@ -86,11 +86,11 @@ class Config:
             # "Decision Tree": DecisionTreeClassifier(
             #     random_state=self.DEFAULT_RANDOM_STATE
             # ),
-            # "Naïve Bayes": GaussianNB(),
-            "XGBoost": XGBClassifier(
-                random_state=self.DEFAULT_RANDOM_STATE,
-                eval_metric="mlogloss",
-            ),
+            "Naïve Bayes": GaussianNB(),
+            # "XGBoost": XGBClassifier(
+            #     random_state=self.DEFAULT_RANDOM_STATE,
+            #     eval_metric="mlogloss",
+            # ),
         }
 
 

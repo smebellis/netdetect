@@ -12,7 +12,7 @@ class ModelMetricsVisualizer:
         # Set plot style
         sns.set(style="whitegrid")
 
-        # Plot 1: Training and Test Accuracy for All Models
+        # Plot 1: Training Accuracy for All Models
         plt.figure(figsize=(10, 6))
         sns.barplot(
             x="model",
@@ -22,22 +22,32 @@ class ModelMetricsVisualizer:
             alpha=0.6,
             label="Train Accuracy",
         )
-        sns.barplot(
-            x="model",
-            y="test_accuracy",
-            data=self.metrics_df,
-            color="r",
-            alpha=0.6,
-            label="Test Accuracy",
-        )
-        plt.title("Training and Test Accuracy for All Models")
+        plt.title("Train Accuracy for All Models")
         plt.xlabel("Model")
         plt.ylabel("Accuracy")
         plt.xticks(rotation=45)
         plt.legend()
         plt.show()
 
-        # Plot 2: Training and Test Recall for All Models
+        # Plot 2: Test Accuracy for All Models
+        plt.figure(figsize=(10, 6))
+        sns.barplot(
+            x="model",
+            y="test_accuracy",
+            data=self.metrics_df,
+            color="b",
+            alpha=0.6,
+            label="Test Accuracy",
+        )
+
+        plt.title("Test Accuracy for All Models")
+        plt.xlabel("Model")
+        plt.ylabel("Accuracy")
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.show()
+
+        # Plot 3: Training Recall for All Models
         plt.figure(figsize=(10, 6))
         sns.barplot(
             x="model",
@@ -47,22 +57,33 @@ class ModelMetricsVisualizer:
             alpha=0.6,
             label="Train Recall",
         )
-        sns.barplot(
-            x="model",
-            y="test_recall",
-            data=self.metrics_df,
-            color="r",
-            alpha=0.6,
-            label="Test Recall",
-        )
-        plt.title("Training and Test Recall for All Models")
+
+        plt.title("Training Recall for All Models")
         plt.xlabel("Model")
         plt.ylabel("Recall")
         plt.xticks(rotation=45)
         plt.legend()
         plt.show()
 
-        # Plot 3: Training and Test Precision for All Models
+        # Plot 4:  Test Recall for All Models
+        plt.figure(figsize=(10, 6))
+        sns.barplot(
+            x="model",
+            y="test_recall",
+            data=self.metrics_df,
+            color="b",
+            alpha=0.6,
+            label="Test Recall",
+        )
+
+        plt.title("Test Recall for All Models")
+        plt.xlabel("Model")
+        plt.ylabel("Recall")
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.show()
+
+        # Plot 5: Training Precision for All Models
         plt.figure(figsize=(10, 6))
         sns.barplot(
             x="model",
@@ -72,22 +93,33 @@ class ModelMetricsVisualizer:
             alpha=0.6,
             label="Train Precision",
         )
-        sns.barplot(
-            x="model",
-            y="test_precision",
-            data=self.metrics_df,
-            color="r",
-            alpha=0.6,
-            label="Test Precision",
-        )
-        plt.title("Training and Test Precision for All Models")
+
+        plt.title("Training Precision for All Models")
         plt.xlabel("Model")
         plt.ylabel("Precision")
         plt.xticks(rotation=45)
         plt.legend()
         plt.show()
 
-        # Plot 4: Training and Test F1 Score for All Models
+        # Plot 6:  Test Precision for All Models
+        plt.figure(figsize=(10, 6))
+        sns.barplot(
+            x="model",
+            y="test_precision",
+            data=self.metrics_df,
+            color="b",
+            alpha=0.6,
+            label="Test Precision",
+        )
+
+        plt.title("Test Precision for All Models")
+        plt.xlabel("Model")
+        plt.ylabel("Precision")
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.show()
+
+        # Plot 7: Training F1 for All Models
         plt.figure(figsize=(10, 6))
         sns.barplot(
             x="model",
@@ -95,37 +127,32 @@ class ModelMetricsVisualizer:
             data=self.metrics_df,
             color="b",
             alpha=0.6,
-            label="Train F1 Score",
+            label="Train F1",
         )
-        sns.barplot(
-            x="model",
-            y="test_f1",
-            data=self.metrics_df,
-            color="r",
-            alpha=0.6,
-            label="Test F1 Score",
-        )
-        plt.title("Training and Test F1 Score for All Models")
+
+        plt.title("Training F1 for All Models")
         plt.xlabel("Model")
-        plt.ylabel("F1 Score")
+        plt.ylabel("F1")
         plt.xticks(rotation=45)
         plt.legend()
         plt.show()
 
-        # Plot 5: PR AUC Scores for Different Classes
-        plt.figure(figsize=(14, 8))
-        pr_auc_columns = [
-            col for col in self.metrics_df.columns if "pr_auc_class_" in col
-        ]
-        for class_name in pr_auc_columns:
-            sns.lineplot(
-                x="model", y=class_name, data=self.metrics_df, label=class_name
-            )
-        plt.title("Precision-Recall AUC Scores for Different Classes")
+        # Plot 8:  Test F1 for All Models
+        plt.figure(figsize=(10, 6))
+        sns.barplot(
+            x="model",
+            y="test_f1",
+            data=self.metrics_df,
+            color="b",
+            alpha=0.6,
+            label="Test F1",
+        )
+
+        plt.title("Test F1 for All Models")
         plt.xlabel("Model")
-        plt.ylabel("PR AUC Score")
+        plt.ylabel("F1")
         plt.xticks(rotation=45)
-        plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+        plt.legend()
         plt.show()
 
     def display_best_params(self):
@@ -159,7 +186,7 @@ class ModelMetricsVisualizer:
 
 if __name__ == "__main__":
     # Example usage
-    file_path = "/home/smebellis/ece579/final_project/network_anomaly_detection/metrics/all_model_metrics_IMBALANCED.csv"
+    file_path = "/home/smebellis/ece579/final_project/network_anomaly_detection/metrics/all_model_metrics_VAE.csv"
     visualizer = ModelMetricsVisualizer(file_path)
     visualizer.plot_model_metrics()
     # visualizer.display_best_params()
